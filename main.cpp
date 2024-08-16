@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
    }
 
    cursor = argv[1] + filepath_length;
-   char is_encoded = false;
+   bool is_encoded = false;
 
    if (sizeof(ENCODED_FILE_EXTENSION) == extension_length) {
 
