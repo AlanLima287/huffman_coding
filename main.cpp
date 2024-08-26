@@ -1,5 +1,5 @@
 #include <iostream>
-#include "huffman.cpp"
+#include "huffman.h"
 
 const char DEFAULT_DECODED_FILE_EXTENSIONS[] = "txt";
 const char ENCODED_FILE_EXTENSION[] = "huf";
