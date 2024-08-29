@@ -1,8 +1,8 @@
 #include <iostream>
 #include "huffman.h"
 
-const char DEFAULT_DECODED_FILE_EXTENSIONS[] = "txt";
-const char ENCODED_FILE_EXTENSION[] = "huf";
+const char DEFAULT_DECODED_FILE_EXTENSIONS[4] = "txt";
+const char ENCODED_FILE_EXTENSION[4] = "huf";
 
 int main(int argc, char** argv) {
 
@@ -52,8 +52,6 @@ int main(int argc, char** argv) {
    for (size_t i = 0; i <= extension_length; i++)
       output_filepath[filepath_length + i] = *cursor++;
 
-   if (HuffmanCoding::encode(argv[1], output_filepath))
-      std::cin.get();
-
+   HuffmanCoding::encode(argv[1], output_filepath);
    return 0;
 }

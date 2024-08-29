@@ -9,7 +9,7 @@ namespace HuffmanCoding {
    using uchar = unsigned char;
 
    struct TreeNode {
-      uchar weight;
+      uchar height;
       uchar character;
       long frequency;
 
