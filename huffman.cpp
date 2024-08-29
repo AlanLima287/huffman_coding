@@ -1,59 +1,9 @@
 #include "huffman.h"
 
-void print_tree(HuffmanCoding::TreeNode* head, HuffmanCoding::uchar tree_height, HuffmanCoding::uchar height, size_t& connections) {
-   using namespace HuffmanCoding;
-
-   if (!head->height) {
-
-      for (uchar i = tree_height - height; i < tree_height; i++)
-         std::cout << "  ";
-
-      std::cout.put(head->character);
-      std::cout.put(0xC4);
-
-      bool zero_break = true;
-      bool one_break = true;
-
-      for (uchar i = height; i < tree_height; i++) {
-         if (connections & (1ull << i)) {
-            if (zero_break) {
-               std::cout.put(0xC4);
-               std::cout.put(0xC2);
-               connections ^= 1ull << i;
-            }
-            else {
-               std::cout.put(0x20);
-               std::cout.put(0x20);
-            }
-         }
-         else {
-            if (one_break) {
-               std::cout.put(0xC4);
-               std::cout.put(0xD9);
-
-               connections ^= 1ull << i;
-
-               zero_break = false;
-               one_break = false;
-            }
-            else {
-               std::cout.put(0x20);
-               std::cout.put(0xB3);
-            }
-         }
-      }
-
-      std::cout.put('\n');
-   }
-
-   if (head->l_child_node) print_tree(head->l_child_node, tree_height, height - 1, connections);
-   if (head->r_child_node) print_tree(head->r_child_node, tree_height, height - 1, connections);
-}
-
-bool HuffmanCoding::encode(const char* input_filepath, const char* output_filepath) {
+bool HuffmanCoding::encode(const char* input_filename, const char* output_filename) {
 
    // Loads the input file
-   std::fstream input_file(input_filepath, std::ios::in | std::ios::binary);
+   std::fstream input_file(input_filename, std::ios::in | std::ios::binary);
    if (!input_file) return false;
 
    long character_buffer[256] = {}; // Holds the count/code for every ASCII character
@@ -104,7 +54,7 @@ bool HuffmanCoding::encode(const char* input_filepath, const char* output_filepa
    {
       while (head_pointer && head_pointer->next_node) {
 
-         uchar height = 1 + ((head_pointer->height >= head_pointer->next_node->height) ? head_pointer->height : head_pointer->next_node->height);
+         uchar height = 1 + (head_pointer->height >= head_pointer->next_node->height ? head_pointer->height : head_pointer->next_node->height);
          //uchar height = 1 + head_pointer->height + head_pointer->next_node->height;
 
          long frequency = head_pointer->frequency + head_pointer->next_node->frequency;
@@ -139,24 +89,31 @@ bool HuffmanCoding::encode(const char* input_filepath, const char* output_filepa
       }
    }
 
-   size_t connections = ~0;
-   //connections >>= sizeof(size_t) - head_pointer->height;
-   print_tree(head_pointer, head_pointer->height, head_pointer->height, connections);
+#ifndef DONT_PRINT_HUFFMAN_TREE
+   // Prints the tree to the terminal. Optinal
+
+   connections = ~0;
+   entropy = 0;
+
+   print_tree(head_pointer);
+   std::cout << "Entropy: " << (float)entropy / file_length << '\n';
+#endif
 
    // Enconding the tree as a sequence of characters
    {
-      header_size = ((header_size - 1) >> 3) + 2; // From bits to bytes
+      header_size = (header_size - 1 >> 3) + 2; // From bits to bytes
       header = new uchar[sizeof(size_t) + header_size];
 
+      // *(size_t*)header = file_length;
+      for (size_t i = 0; i < sizeof(size_t); i++)
+         *header++ = file_length >> (i << 3);
+
+      for (size_t i = 0; i < header_size; i++)
+         header[i] = 0;
+
+      header -= sizeof(size_t);
       size_t byte_cursor = 0;
       uchar bit_cursor = 7;
-
-      *(size_t*)header = file_length;
-
-      byte_cursor = sizeof(size_t) + header_size;
-      for (size_t i = 0; i < header_size; i++) {
-         header[byte_cursor--] = 0;
-      }
 
       while (head_pointer) {
 
@@ -199,3 +156,41 @@ bool HuffmanCoding::encode(const char* input_filepath, const char* output_filepa
 
    return true;
 }
+
+#ifndef DONT_PRINT_HUFFMAN_TREE
+void HuffmanCoding::print_tree(TreeNode* head, uchar height) {
+   if (!head->height) {
+
+      __int256 comparator = connections;
+      for (uchar i = height - 1; i < 0xff; i--) {
+         if (connections.__getbit(i))
+            comparator.__setbit_0(i);
+         else {
+            comparator.__setbit_1(i);
+            break;
+         }
+      }
+
+      char branches[][3] = { "\xB3\x20", "\xC0\xC4", "\xC2\xC4", "\x20\x20" };
+      for (uchar i = 0; i < height; i++) {
+         std::cout << branches[connections.__getbit(i) << 1 | comparator.__getbit(i)];
+      }
+
+      if (0x20 < head->character && head->character < 0x7f)
+         std::cout.put(head->character);
+      else if (head->character == 0x20)
+         std::cout << "Space";
+      else
+         std::cout << "0x" << std::hex << (short)(head->character);
+
+
+      std::cout.put('\n');
+
+      entropy += height * head->frequency;
+      connections = comparator;
+   }
+
+   if (head->l_child_node) print_tree(head->l_child_node, height + 1);
+   if (head->r_child_node) print_tree(head->r_child_node, height + 1);
+}
+#endif

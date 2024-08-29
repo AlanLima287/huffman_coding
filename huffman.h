@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include "__int256.h"
 
 namespace HuffmanCoding {
 
@@ -20,9 +21,17 @@ namespace HuffmanCoding {
 
    bool encode(const char*, const char*);
 
-   bool decode(const char* input_filepath, const char* output_filepath) {
+   bool decode(const char* input_filename, const char* output_filename) {
       return false;
    }
+
+#ifndef DONT_PRINT_HUFFMAN_TREE
+   __int256 connections;
+   size_t entropy;
+
+   void print_tree(TreeNode*, uchar = 0);
+#endif
+
 }
 
 #include "huffman.cpp"
