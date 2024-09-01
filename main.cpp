@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
 
    if (argc < 2) {
       std::cerr << "No filepath has been given!";
-      return 1; 
+      return 1;
    }
 
    size_t filename_length;
@@ -54,6 +54,10 @@ int main(int argc, char** argv) {
    for (size_t i = 0; i < extension_length; i++)
       output_filename[filename_length + i] = cursor[i];
 
-   HuffmanCoding::encode(argv[1], output_filename);
+   if (HuffmanCoding::encode(argv[1], output_filename))
+      std::cout << "Everything went fine!\n";
+   else std::cerr << "Something went wrong!\n";
+
+   delete[] output_filename;
    return 0;
 }
