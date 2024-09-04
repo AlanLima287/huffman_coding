@@ -244,7 +244,7 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
                      num = D: "\r";
                   num ∊ [E, 19] ∪ [7F, FF]: "\x{num}";
                   num ∊ (20, 7E]: (char)num;
-                  num = 20: "Space".
+                  num = 20: ' '.
                */
 
                // The following notes show the recorded branching behavior
@@ -272,9 +272,17 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
                }
 
                std::cout << ": " << std::dec << (short)character_buffer[head_pointer->character].code.length << ' ';
-               for (uchar i = 0; i < character_buffer[head_pointer->character].code.length; i++) {
-                  std::cout.put('1' - InBitTools::__getbit(character_buffer[head_pointer->character].code.branches, i));
-               }
+
+               // i = character_buffer[head_pointer->character].code.length;
+               // do {
+               //    i--;
+               //    std::cout.put('1' - InBitTools::__getbit2(character_buffer[head_pointer->character].code.branches, i));
+               // } while (i);
+
+               for (uchar i = 0; i < length; i++) {
+                  print_bits(~character_buffer[head_pointer->character].code.branches[i], 8);
+                  std::cout.put(' ');
+               }  
 
                std::cout.put('\n');
             }

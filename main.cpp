@@ -1,25 +1,13 @@
 #include <iostream>
 
-template <typename type>
-void print_bits(type num, size_t i) {
-   for (i = 1ull << i - 1; i; i >>= 1)
-      std::cout.put('0' + !!(num & i));
-}
-
 //#define DONT_PRINT_HUFFMAN_TREE
 #include "huffman.h"
 
 const char DEFAULT_DECODED_FILE_EXTENSIONS[4] = "txt";
 const char ENCODED_FILE_EXTENSION[4] = "huf";
 
-// int main(int argc, char** argv) {
-int main() {
-
-   int argc = 2;
-   char argv[][10] = {
-      "",
-      "a.txt"
-   };
+int main(int argc, char** argv) {
+//int main() {
 
    if (argc < 2) {
       std::cerr << "No filepath has been given!";

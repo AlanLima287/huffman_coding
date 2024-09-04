@@ -1,9 +1,9 @@
 #pragma once
 
-#include <iostream>
 #include <fstream>
 
 #ifndef DONT_PRINT_HUFFMAN_TREE
+#include <iostream>
 #include <iomanip>
 #endif
 
@@ -28,22 +28,32 @@ namespace HuffmanCoding {
       uchar* branches;
    } CodeWord;
 
+   template <typename type>
+   void print_bits(type num, size_t i) {
+      for (i = 1ull << i - 1; i; i >>= 1)
+         std::cout.put('0' + !!(num & i));
+   }
+
    namespace InBitTools {
       inline bool __getbit(uchar* base, uchar pos) {
+         return base[(pos & 0xF8) >> 3] & (1 << (~pos & 0x07));
+      }
+
+      inline bool __getbit2(uchar* base, uchar pos) {
          return base[(pos & 0xF8) >> 3] & (1 << (pos & 0x07));
       }
 
       inline void __flipbit(uchar* base, uchar pos) {
-         base[(pos & 0xF8) >> 3] ^= 1 << (pos & 0x07);
+         base[(pos & 0xF8) >> 3] ^= 1 << (~pos & 0x07);
       }
 
-      inline void __setbit_0(uchar* base, uchar pos) {
-         base[(pos & 0xF8) >> 3] &= ~(1 << (pos & 0x07));
-      }
+      // inline void __setbit_0(uchar* base, uchar pos) {
+      //    base[(pos & 0xF8) >> 3] &= ~(1 << (pos & 0x07));
+      // }
 
-      inline void __setbit_1(uchar* base, uchar pos) {
-         base[(pos & 0xF8) >> 3] |= 1 << (pos & 0x07);
-      }
+      // inline void __setbit_1(uchar* base, uchar pos) {
+      //    base[(pos & 0xF8) >> 3] |= 1 << (pos & 0x07);
+      // }
    };
 
    bool encode(const char*, const char*);
