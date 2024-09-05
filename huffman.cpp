@@ -273,16 +273,9 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
 
                std::cout << ": " << std::dec << (short)character_buffer[head_pointer->character].code.length << ' ';
 
-               // i = character_buffer[head_pointer->character].code.length;
-               // do {
-               //    i--;
-               //    std::cout.put('1' - InBitTools::__getbit2(character_buffer[head_pointer->character].code.branches, i));
-               // } while (i);
-
-               for (uchar i = 0; i < length; i++) {
-                  print_bits(~character_buffer[head_pointer->character].code.branches[i], 8);
-                  std::cout.put(' ');
-               }  
+               for (uchar i = 0; i < character_buffer[head_pointer->character].code.length; i++) {
+                  std::cout.put('1' - InBitTools::__getbit(character_buffer[head_pointer->character].code.branches, i));
+               }
 
                std::cout.put('\n');
             }
@@ -326,22 +319,27 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
       std::fstream input_file(input_filename, std::ios::in | std::ios::binary);
 
       while (input_file.get((char&)ch)) {
-         uchar code_length = character_buffer[ch].code.length >> 3;
 
-         uchar i = 0;
+         //if (character_buffer[ch].code.length & 0x7) {
+            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[0] >> (bbit_cursor & 0x7));
+
+            if ((character_buffer[ch].code.length - 1 & 0x7) + (bbit_cursor & 0x7) > 7)
+               buffer[(bbit_cursor >> 3) + 1] &= ~(character_buffer[ch].code.branches[0] << (8 - (bbit_cursor & 0x7)));
+
+            bbit_cursor += (character_buffer[ch].code.length - 1 & 0x7) + 1;
+            //i++;
+         //}
+
+         uchar code_length = character_buffer[ch].code.length >> 3;
+         uchar bit_cursor = bbit_cursor & 0x7;
+
+         uchar i = 1;
          while (i < code_length) {
-            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] >> (bbit_cursor & 0x7));
+            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] >> bit_cursor);
             bbit_cursor += 8;
 
-            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] << (8 - (bbit_cursor & 0x7)));
+            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] << (8 - bit_cursor));
             i++;
-         }
-
-         if (character_buffer[ch].code.length & 0x7) {
-            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] >> (bbit_cursor & 0x7));
-            bbit_cursor += character_buffer[ch].code.length & 0x7;
-
-            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] << (8 - (bbit_cursor & 0x7)));
          }
       }
 
