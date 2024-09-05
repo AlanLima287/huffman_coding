@@ -271,11 +271,16 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
                   std::cout.put(head_pointer->character);
                }
 
-               std::cout << ": " << std::dec << (short)character_buffer[head_pointer->character].code.length << ' ';
+               std::cout << ": " << std::dec << (short)head_pointer->frequency << ' '
+                  << (short)character_buffer[head_pointer->character].code.length << ' ';
 
-               for (uchar i = 0; i < character_buffer[head_pointer->character].code.length; i++) {
-                  std::cout.put('1' - InBitTools::__getbit(character_buffer[head_pointer->character].code.branches, i));
+               for (uchar i = 0; i < length; i++) {
+                  print_bits(~character_buffer[head_pointer->character].code.branches[i], 8);
+                  std::cout.put(' ');
                }
+
+               // for (uchar i = 0; i < character_buffer[head_pointer->character].code.length; i++) 
+               //    std::cout.put('1' - InBitTools::__getbit(character_buffer[head_pointer->character].code.branches, i));
 
                std::cout.put('\n');
             }
@@ -291,11 +296,13 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
          head_pointer = tmp;
       }
 
-      std::cout << "Entropy: " << (float)entropy / file_length << '\n';
+      //std::cout << "Entropy: " << (float)entropy / file_length << '\n';
+      std::cout << "Entropy: " << entropy << '\n';
+      std::cout << "Entropy: " << (entropy + 7 >> 3) << '\n';
       std::cout << "Total character count: " << file_length << '\n';
 
-      //output_file.put(0x00);
-      //output_file.write((char*)header, header_size);
+      output_file.put(0x00);
+      output_file.write((char*)header, header_size);
       delete[] header;
    }
 
@@ -320,27 +327,22 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
 
       while (input_file.get((char&)ch)) {
 
-         //if (character_buffer[ch].code.length & 0x7) {
-            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[0] >> (bbit_cursor & 0x7));
+         uchar code_length = character_buffer[ch].code.length - 1 >> 3;
+         uchar i;
 
-            if ((character_buffer[ch].code.length - 1 & 0x7) + (bbit_cursor & 0x7) > 7)
-               buffer[(bbit_cursor >> 3) + 1] &= ~(character_buffer[ch].code.branches[0] << (8 - (bbit_cursor & 0x7)));
-
-            bbit_cursor += (character_buffer[ch].code.length - 1 & 0x7) + 1;
-            //i++;
-         //}
-
-         uchar code_length = character_buffer[ch].code.length >> 3;
-         uchar bit_cursor = bbit_cursor & 0x7;
-
-         uchar i = 1;
-         while (i < code_length) {
-            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] >> bit_cursor);
+         for (i = 0; i < code_length; i++) {
+            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] >> (bbit_cursor & 0x7));
             bbit_cursor += 8;
 
-            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] << (8 - bit_cursor));
-            i++;
+            buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] << (8 - (bbit_cursor & 0x7)));
          }
+
+         buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] >> (bbit_cursor & 0x7));
+
+         if ((character_buffer[ch].code.length - 1 & 0x7) + (bbit_cursor & 0x7) > 7)
+            buffer[(bbit_cursor >> 3) + 1] &= ~(character_buffer[ch].code.branches[i] << (8 - (bbit_cursor & 0x7)));
+
+         bbit_cursor += (character_buffer[ch].code.length - 1 & 0x7) + 1;
       }
 
       output_file.write((char*)buffer, entropy);

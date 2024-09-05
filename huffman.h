@@ -42,6 +42,14 @@ namespace HuffmanCoding {
       inline void __flipbit(uchar* base, uchar pos) {
          base[(pos & 0xF8) >> 3] ^= 1 << (~pos & 0x07);
       }
+
+      inline void __setbit_0(uchar* base, uchar pos) {
+         base[(pos & 0xF8) >> 3] &= ~(1 << (pos & 0x07));
+      }
+
+      inline void __setbit_1(uchar* base, uchar pos) {
+         base[(pos & 0xF8) >> 3] |= 1 << (pos & 0x07);
+      }
    };
 
    bool encode(const char*, const char*);
