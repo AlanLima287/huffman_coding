@@ -2,4 +2,5 @@
 *.exe
 *.huf
 *.txt
-test.cpp
+dump.bin
+test.*

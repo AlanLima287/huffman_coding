@@ -1,15 +1,12 @@
 #pragma once
 
 #include <fstream>
-
-#ifndef DONT_PRINT_HUFFMAN_TREE
 #include <iostream>
 #include <iomanip>
-#endif
 
 namespace HuffmanCoding {
 
-   const size_t PAGE_SIZE = 0x1000;
+   // const size_t PAGE_SIZE = 0x1000;
    using uchar = unsigned char;
    using uint64 = unsigned long long;
 
@@ -23,15 +20,31 @@ namespace HuffmanCoding {
       TreeNode* next_node;
    } TreeNode;
 
+   typedef union HUFFileFlags {
+      uchar state;
+      uchar
+         true_tree: 1, // The file contains 2 or more kinds of characters
+         truly_encode: 1, // The file is encoded under the default encoding
+         b5: 1,
+         b4: 1,
+         b3: 1,
+         size_order: 3; // The amount of bytes used to store the number of character in the original file
+   } HUFFileFlags;
+
    typedef struct CodeWord {
       uchar length;
       uchar* branches;
    } CodeWord;
 
+   typedef union Buffer {
+      CodeWord code;
+      uint64 count;
+   } Buffer;
+
    template <typename type>
-   void print_bits(type num, size_t i) {
-      for (i = 1ull << i - 1; i; i >>= 1)
-         std::cout.put('0' + !!(num & i));
+   void print_bits(type value, size_t bits) {
+      for (bits = 1ull << bits - 1; bits; bits >>= 1)
+         std::cout.put('0' + !!(value & bits));
    }
 
    namespace InBitTools {

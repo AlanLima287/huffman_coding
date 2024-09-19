@@ -1,3 +1,5 @@
+#pragma once
+
 #include "huffman.h"
 
 bool HuffmanCoding::encode(const char* input_filename, const char* output_filename) {
@@ -11,16 +13,11 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
    if (!output_file) return true;
 
    // Holds the count/code for every ASCII character
-   // Don't do this, unless you know what you are doing
-   // I do not, but I'll do it regardless :)
-   // Evil pointer trick!
-   union Buffer {
-      CodeWord code;
-      uint64 count;
-   } character_buffer[256] = {};
+   Buffer character_buffer[256] = {};
 
-   // uchar* buffer = nullptr; // character_buffer's code variables will point to objects on this buffer
-   CodeWord placeholder = {};
+   // character_buffer's code variables will point to objects on this buffer
+   uchar* holder = nullptr;
+   HUFFileFlags flags = {};
 
    uint64 file_length = 0; // Stores the length of the file
    uint64 entropy = 0; // Stores the (scaled by file_lenght) Shannon entropy of the Huffman tree
@@ -74,6 +71,7 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
          // Stops when ch is 0, if not 0, decreases it;
       } while (ch--);
 
+      flags.true_tree = unique_characters > 1;
       header_size = (uint64)unique_characters << 3;
    }
 
@@ -89,7 +87,7 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
          // Garantees that the right child will never be higher than the left child
          TreeNode* l_child;
          TreeNode* r_child;
-         if (head_pointer->height >= head_pointer->next_node->height) {
+         if (head_pointer->height <= head_pointer->next_node->height) {
             l_child = head_pointer;
             r_child = head_pointer->next_node;
          }
@@ -102,7 +100,7 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
             if (!n->next_node || frequency < n->next_node->frequency || (frequency == n->next_node->frequency && height < n->next_node->height)) {
 
                n->next_node = new TreeNode{
-                  height, uchar((!!l_child->height << 1) | !!r_child->height), frequency, l_child, r_child, n->next_node
+                  height, uchar('0' + ((!!l_child->height << 1) | !!r_child->height)), frequency, l_child, r_child, n->next_node
                };
 
                break;
@@ -118,19 +116,22 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
          r_child->next_node = nullptr;
       }
 
-      length = head_pointer->height + 7 >> 3;
+      length = (head_pointer->height + 7) >> 3;
    }
 
    // Enconding the tree as a sequence of characters
    {
-      header_size = sizeof(file_length) + (header_size + 7 >> 3); // From bits to bytes plus the size of the header
+      header_size = sizeof(file_length) + ((header_size + 7) >> 3); // From bits to bytes plus the size of the header
       uchar* header = new uchar[sizeof(file_length) + header_size]; // Points to the header, i.e., the encoded tree
+
+      uint64 i = 0;
 
       // *(uint64*)header = file_length;
       // Does garantee the Little Endian ordering, unlike above
-      uint64 i = 0;
-      for (i = 0; i < sizeof(file_length); i++)
-         header[i] = file_length >> (i << 3);
+      for (; i < sizeof(file_length); i++) {
+         header[i] = uchar(file_length >> (i << 3));
+         //flags.size_order++;
+      }
 
       // Initialize the whole header to NULL bytes
       // Necessary for future bitwise or operatios
@@ -140,10 +141,12 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
       uint64 byte_cursor = sizeof(file_length); // Index of the writing head of the header
       uchar bit_cursor = 7; // Index in-byte of the writing head of the header
 
-      uchar height = head_pointer->height; // Stores the absolute height of the tree
+      // uchar height = head_pointer->height; // Stores the absolute height of the tree
       uchar depth = 0; // Stores the relative depth of the tree
 
-      placeholder.branches = new uchar[(unique_characters + 1) * length];
+      holder = new uchar[(unique_characters + 1) * length];
+      CodeWord placeholder = { 0, holder };
+
       for (uchar i = 0; i < length; i++) {
          placeholder.branches[i] = 0;
       }
@@ -201,17 +204,39 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
 
             i = depth - 1;
 
-            // Well, it works! I might explain it later
-            InBitTools::__flipbit(character_buffer[head_pointer->character].code.branches, i);
-            if (InBitTools::__getbit(connections->branches, i)) do {
-               i--;
-               depth--;
-            } while (!InBitTools::__getbit(connections->branches, i) && i);
+            // Well, I did explain it, after all :>
+            //
+            // Enjoy a Turing Machine!!!
+            // States:            {q₀, q₁, HALT};
+            // Symbols:           {0, 1, _};
+            // Blank symbol:      _;
+            // Initial state:     q₀;
+            // Behavior function: δ.
+            //
+            //            Instruction table for δ
+            // Configuration       Behavior
+            // State     Symbol    Symbol    Movement  State
+            // q₀        0         1         R         q₁
+            // q₀        1         0         R         q₀
+            // q₁        0         0         R         q₁
+            // q₁        1         1         R         q₁
+            // q₁        _         _                   HALT
+            //
+            // For any branch code member of 1ⁿ{0,1}*, n is decreased from the depth,
+            // means unbranching (exiting a branch)
 
-            else do {
-               i--;
-               InBitTools::__flipbit(character_buffer[head_pointer->character].code.branches, i);
-            } while (!InBitTools::__getbit(connections->branches, i) && i);
+            InBitTools::__flipbit(character_buffer[head_pointer->character].code.branches, i);
+            if (i) {
+               if (InBitTools::__getbit(connections->branches, i)) do {
+                  i--;
+                  depth--;
+               } while (!InBitTools::__getbit(connections->branches, i) && i);
+
+               else do {
+                  i--;
+                  InBitTools::__flipbit(character_buffer[head_pointer->character].code.branches, i);
+               } while (!InBitTools::__getbit(connections->branches, i) && i);
+            }
 
             // Print the Huffman tree to the standart output. Will be made optional
             {
@@ -274,20 +299,19 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
                std::cout << ": " << std::dec << (short)head_pointer->frequency << ' '
                   << (short)character_buffer[head_pointer->character].code.length << ' ';
 
-               for (uchar i = 0; i < length; i++) {
-                  print_bits(~character_buffer[head_pointer->character].code.branches[i], 8);
-                  std::cout.put(' ');
-               }
+               // for (uchar i = 0; i < length; i++) {
+               //    print_bits(~character_buffer[head_pointer->character].code.branches[i], 8);
+               //    std::cout.put(' ');
+               // }
 
-               // for (uchar i = 0; i < character_buffer[head_pointer->character].code.length; i++) 
-               //    std::cout.put('1' - InBitTools::__getbit(character_buffer[head_pointer->character].code.branches, i));
+               for (uchar i = 0; i < character_buffer[head_pointer->character].code.length; i++)
+                  std::cout.put('1' - InBitTools::__getbit(character_buffer[head_pointer->character].code.branches, i));
 
                std::cout.put('\n');
             }
 
             entropy += character_buffer[head_pointer->character].code.length * head_pointer->frequency; // ∑L(x)f(x)
             connections = &character_buffer[head_pointer->character].code;
-            // #endif
          }
 
          // Pops the stack, i.e., the head_pointer
@@ -296,38 +320,34 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
          head_pointer = tmp;
       }
 
-      //std::cout << "Entropy: " << (float)entropy / file_length << '\n';
-      std::cout << "Entropy: " << entropy << '\n';
-      std::cout << "Entropy: " << (entropy + 7 >> 3) << '\n';
+      std::cout << "Entropy: " << (float)entropy / file_length << '\n';
       std::cout << "Total character count: " << file_length << '\n';
 
-      output_file.put(0x00);
+      output_file.put(flags.state);
       output_file.write((char*)header, header_size);
       delete[] header;
    }
 
    // Encoding the file
    {
-      entropy = entropy + 7 >> 3; // From bits to bytes
+      entropy = (entropy + 7) >> 3; // From bits to bytes
       uchar* buffer = new uchar[entropy]; // Holds the encoded file
 
       // Initialize the whole buffer to FULL bytes
-      // Necessary for future bitwise and operatios
+      // Necessary for future bitwise and operations
       for (uint64 i = 0; i < entropy; i++) {
          buffer[i] = 0xff;
       }
 
       uint64 bbit_cursor = 0;
 
-      // input_file.seekg(0, std::ios::beg);
-      // input_file.seekp(0, std::ios::beg);
+      input_file.close();
+      input_file.open(input_filename, std::ios::in | std::ios::binary);
 
       uchar ch;
-      std::fstream input_file(input_filename, std::ios::in | std::ios::binary);
-
       while (input_file.get((char&)ch)) {
 
-         uchar code_length = character_buffer[ch].code.length - 1 >> 3;
+         uchar code_length = (character_buffer[ch].code.length - 1) >> 3;
          uchar i;
 
          for (i = 0; i < code_length; i++) {
@@ -339,19 +359,19 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
 
          buffer[bbit_cursor >> 3] &= ~(character_buffer[ch].code.branches[i] >> (bbit_cursor & 0x7));
 
-         if ((character_buffer[ch].code.length - 1 & 0x7) + (bbit_cursor & 0x7) > 7)
+         if (((character_buffer[ch].code.length - 1) & 0x7) + (bbit_cursor & 0x7) > 7)
             buffer[(bbit_cursor >> 3) + 1] &= ~(character_buffer[ch].code.branches[i] << (8 - (bbit_cursor & 0x7)));
 
-         bbit_cursor += (character_buffer[ch].code.length - 1 & 0x7) + 1;
+         bbit_cursor += ((character_buffer[ch].code.length - 1) & 0x7) + 1;
       }
 
       output_file.write((char*)buffer, entropy);
-      input_file.close();
+      delete[] buffer;
    }
 
    output_file.close();
    input_file.close();
 
-   delete[] placeholder.branches;
+   delete[] holder;
    return true;
 }

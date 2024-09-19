@@ -1,13 +1,11 @@
 #include <iostream>
-
-//#define DONT_PRINT_HUFFMAN_TREE
 #include "huffman.h"
 
 const char DEFAULT_DECODED_FILE_EXTENSIONS[4] = "txt";
 const char ENCODED_FILE_EXTENSION[4] = "huf";
 
-int main(int argc, char** argv) {
-//int main() {
+int main(int argc, const char** argv) {
+   // int main() { int argc = 2; char argv[][10] = { "", "a.txt" };
 
    if (argc < 2) {
       std::cerr << "No filepath has been given!";
@@ -16,7 +14,7 @@ int main(int argc, char** argv) {
 
    size_t filename_length;
    size_t extension_length = 0;
-   char* cursor = argv[1];
+   const char* cursor = argv[1];
 
    for (filename_length = 0; *cursor; filename_length++, cursor++) {
       if (*cursor == '.') extension_length = filename_length;
@@ -44,19 +42,27 @@ int main(int argc, char** argv) {
       }
    }
 
-   extension_length = sizeof(!is_encoded ? ENCODED_FILE_EXTENSION : DEFAULT_DECODED_FILE_EXTENSIONS);
-   char* output_filename = new char[filename_length + extension_length + 1];
+   if (is_encoded) {
+      extension_length = sizeof(DEFAULT_DECODED_FILE_EXTENSIONS);
+      cursor = DEFAULT_DECODED_FILE_EXTENSIONS;
+   }
+   else {
+      extension_length = sizeof(ENCODED_FILE_EXTENSION);
+      cursor = ENCODED_FILE_EXTENSION;
+   }
 
-   cursor = (char*)(!is_encoded ? ENCODED_FILE_EXTENSION : DEFAULT_DECODED_FILE_EXTENSIONS);
+   char* output_filename = new char[filename_length + extension_length];
 
-   for (size_t i = 0; i < filename_length; i++)
+   size_t i = 0;
+   for (; i < filename_length; i++)
       output_filename[i] = argv[1][i];
 
-   for (size_t i = 0; i < extension_length; i++)
-      output_filename[filename_length + i] = cursor[i];
+   do {
+      output_filename[i++] = *cursor;
+   } while (*cursor++);
 
    if (HuffmanCoding::encode(argv[1], output_filename))
-      std::cout << "Everything might'be gone fine!\n";
+      std::cout << "Everything might've gone fine!\n";
    else
       std::cerr << "Something went wrong!\n";
 
