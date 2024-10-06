@@ -222,7 +222,7 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
             // q₁        1         1         R         q₁
             // q₁        _         _                   HALT
             //
-            // For any branch code member of 1ⁿ{0,1}*, n is decreased from the depth,
+            // For any branch code member of 1ⁿ{0,1}*, n is decremented from the depth,
             // means unbranching (exiting a branch)
 
             InBitTools::__flipbit(character_buffer[head_pointer->character].code.branches, i);

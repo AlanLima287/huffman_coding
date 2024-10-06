@@ -1,10 +1,9 @@
 #include <iostream>
 #include "huffman.h"
 
-const char DEFAULT_DECODED_FILE_EXTENSIONS[4] = "txt";
 const char ENCODED_FILE_EXTENSION[4] = "huf";
 
-int main(int argc, const char** argv) {
+int main(int argc, char** argv) {
    // int main() { int argc = 2; char argv[][10] = { "", "a.txt" };
 
    if (argc < 2) {
@@ -14,7 +13,7 @@ int main(int argc, const char** argv) {
 
    size_t filename_length;
    size_t extension_length = 0;
-   const char* cursor = argv[1];
+   char* cursor = argv[1];
 
    for (filename_length = 0; *cursor; filename_length++, cursor++) {
       if (*cursor == '.') extension_length = filename_length;
@@ -42,30 +41,47 @@ int main(int argc, const char** argv) {
       }
    }
 
+
    if (is_encoded) {
-      extension_length = sizeof(DEFAULT_DECODED_FILE_EXTENSIONS);
-      cursor = DEFAULT_DECODED_FILE_EXTENSIONS;
+
+      char* output_filename = new char[filename_length];
+      std::cout << filename_length << ' ';
+
+      for (size_t i = 0; i < filename_length - 1; i++)
+         output_filename[i] = argv[1][i];
+      
+      output_filename[filename_length - 1] = '\0';
+
+      std::cout << argv[1] << ' ' << output_filename;
+
+      // HuffmanCoding::decode(argv[1], output_filename);
+      delete[] output_filename;
+
+   } else {
+
+      filename_length += extension_length;
+      char* output_filename = new char[filename_length + sizeof(ENCODED_FILE_EXTENSION)];
+      std::cout << filename_length + sizeof(ENCODED_FILE_EXTENSION) << ' ';
+
+      size_t i;
+      for (i = 0; i < filename_length - 1; i++)
+         output_filename[i] = argv[1][i];
+
+      output_filename[filename_length - 1] = '.';
+
+      cursor = output_filename + filename_length;
+      for (i = 0; i < sizeof(ENCODED_FILE_EXTENSION); i++)
+         *cursor++ = ENCODED_FILE_EXTENSION[i];
+
+      std::cout.write(output_filename, filename_length + sizeof(ENCODED_FILE_EXTENSION));
+
+      if (HuffmanCoding::encode(argv[1], output_filename))
+         std::cout << "Everything might've gone fine!\n";
+      else
+         std::cerr << "Something went wrong!\n";
+
+      delete[] output_filename;
    }
-   else {
-      extension_length = sizeof(ENCODED_FILE_EXTENSION);
-      cursor = ENCODED_FILE_EXTENSION;
-   }
 
-   char* output_filename = new char[filename_length + extension_length];
-
-   size_t i = 0;
-   for (; i < filename_length; i++)
-      output_filename[i] = argv[1][i];
-
-   do {
-      output_filename[i++] = *cursor;
-   } while (*cursor++);
-
-   if (HuffmanCoding::encode(argv[1], output_filename))
-      std::cout << "Everything might've gone fine!\n";
-   else
-      std::cerr << "Something went wrong!\n";
-
-   delete[] output_filename;
    return 0;
 }
