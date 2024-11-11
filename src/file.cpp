@@ -41,7 +41,6 @@ int main(int argc, char** argv) {
       }
    }
 
-
    if (is_encoded) {
 
       char* output_filename = new char[filename_length];
