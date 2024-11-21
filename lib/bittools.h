@@ -27,39 +27,41 @@ namespace BitTools {
 
    typedef unsigned char byte;
 
-   const byte SHIFT = sizeof(byte) >= 4 ? ((sizeof(byte) >> 2) + 4) : (sizeof(byte) + 2);
+   const uint64_t SHIFT = sizeof(byte) >= 4 ? ((sizeof(byte) >> 2) + 4) : (sizeof(byte) + 2);
    const uint64_t POWER = 1ull << SHIFT;
    const uint64_t MASK = POWER - 1;
+   
+   const byte NATOM = (1ull << POWER) - 1;
 
    byte* construct(uint64_t, byte = 0);
    inline void destruct(byte*);
 
-   // BT (Bit Test)
    inline bool getbit(byte*, uint64_t);
-
-   // BTC (Bit Test and Complement)
    inline bool flipbit(byte*, uint64_t);
-
-   // BTR (Bit Test and Reset)
    inline bool setbit_0(byte*, uint64_t);
-
-   // BTS (Bit Test and Set)
    inline bool setbit_1(byte*, uint64_t);
 
-   // Fills the boolean array with a byte-wise pattern
+   inline bool setbit(byte*, uint64_t, bool);
+
    byte* initialize(byte*, uint64_t, byte = 0);
 
-   inline uint64_t size(uint64_t size) { return (size + MASK) >> SHIFT; }
+   inline uint64_t size(uint64_t length) { return (length + MASK) >> SHIFT; }
 
    inline void putword(byte*, uint64_t, byte);
    inline byte getword(byte*, uint64_t);
+
+   inline void putbitstr(byte*, uint64_t, byte*, uint64_t);
+   inline void getbitstr(byte*, uint64_t, byte*, uint64_t);
 
    // Print the bits
    template <typename type_t>
    void print(type_t, uint64_t);
    
    void print(byte*, uint64_t);
+   void printin(byte*, uint64_t);
+
    void print(byte*, uint64_t, uint64_t);
+   void printin(byte*, uint64_t, uint64_t);
 };
 
 #include "bittools.cpp"

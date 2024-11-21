@@ -40,13 +40,18 @@ void BitTools::print(byte* base, uint64_t size) {
 
 void BitTools::print(byte* base, uint64_t size, uint64_t pad) {
    if (!size) return;
-
    size--;
-   pad = (1ull << pad) - 1;
 
-   for (uint64_t i = 0; i <= size; i++) {
+   for (uint64_t i = 0, j = 0; i <= size; i++) {
       std::cout.put(getbit(base, size - i) ? '1' : '0');
-      if (!(~i & pad)) std::cout.put(' ');
+      if (++j >= pad) { std::cout.put(' '); j = 0; }
+   }
+}
+
+void BitTools::printin(byte* base, uint64_t size, uint64_t pad) {
+   for (uint64_t i = 0, j = 0; i < size; i++) {
+      std::cout.put(getbit(base, i) ? '1' : '0');
+      if (++j >= pad) { std::cout.put(' '); j = 0; }
    }
 }
 
@@ -95,19 +100,64 @@ inline bool BitTools::setbit_1(byte* base, uint64_t pos) {
 
 #endif /* defined(__INTRIN_H_) && __HAS__INTRINSICS____ */
 
+inline bool BitTools::setbit(byte* base, uint64_t pos, bool bit_value) {
+   byte* word = base + (pos >> SHIFT);
+   int64_t offset = 1 << (pos & MASK);
+
+   bool bit = *word & offset;
+   if (bit_value) *word &= ~offset;
+   else *word |= offset;
+
+   return bit;
+}
+
 inline void BitTools::putword(byte* base, uint64_t pos, byte iword) {
    byte* word = base + (pos >> SHIFT);
+   pos &= MASK;
 
-   *word++ |= iword << (pos & MASK);
-   *word |= iword >> ((POWER - pos) & MASK);
+   *word &= NATOM << (POWER - pos);
+   *word |= iword << pos;
+
+   word++;
+
+   *word &= NATOM >> pos;
+   *word |= iword >> (POWER - pos);
 }
 
 inline BitTools::byte BitTools::getword(byte* base, uint64_t pos) {
    byte* word = base + (pos >> SHIFT);
    byte iword = 0;
+   
+   pos &= MASK;
 
-   iword |= *word++ >> (pos & MASK);
-   iword |= *word << ((POWER - pos) & MASK);
+   iword |= *word++ >> pos;
+   iword |= *word << (POWER - pos);
 
    return iword;
+}
+
+inline void BitTools::putbitstr(byte* base, uint64_t pos, byte* bitstr, uint64_t length) {
+   uint64_t count = length >> SHIFT;
+
+   for (uint64_t i = 0; i < count; i++, pos += POWER) {
+      putword(base, pos, *bitstr++);
+   }
+
+   length = (length & MASK) + pos;
+   
+   for (uint64_t i = 1ull; pos < length; i <<= 1, pos++) {
+      if (*bitstr & i) setbit_1(base, pos);
+      else setbit_0(base, pos);
+   }
+}
+
+inline void BitTools::getbitstr(byte* base, uint64_t pos, byte* bitstr, uint64_t length) {
+   uint64_t count = length >> SHIFT;
+
+   for (uint64_t i = 0; i < count; i++, pos += POWER) {
+      *bitstr++ = getword(base, pos);
+   }
+
+   *bitstr = getword(base, pos);
+   *bitstr &= NATOM >> (POWER - (length & MASK));
 }

@@ -5,51 +5,46 @@
 bool HuffmanCoding::encode(const char* input_filename, const char* output_filename) {
    State state;
 
-   state.hufifile.file = fopen(input_filename, "r+");
-   if (!state.hufifile.file) return false;
-
-   setvbuf(state.hufifile.file, nullptr, _IONBF, 0);
-
-   state.hufifile.buffer = new (std::nothrow) byte[PAGE_SIZE + 1];
-   if (!state.hufifile.buffer) {
-      fclose(state.hufifile.file);
-      return false;
-   }
-
-   state.hufifile.size = fread(state.hufifile.buffer, sizeof(byte), PAGE_SIZE, state.hufifile.file);
-   state.hufifile.length = state.hufifile.size;
-   state.hufifile.cursor = 0;
+   HUFFile::open(state.ifile, input_filename, HUFFile::mode_t::read);
 
    find_frequencies(state);
    build_tree(state);
 
-   delete[] state.hufifile.buffer;
-   fclose(state.hufifile.file);
+   delete[] state.base;
+   
+   HUFFile::open(state.ofile, input_filename, HUFFile::mode_t::read);
+
+   build_header(state);
+   encode_file(state);
+
+   delete[] state.connections;
+   delete[] state.branches;
 
    return true;
 }
 
 bool HuffmanCoding::find_frequencies(State& state) {
-   uint64_t character_buffer[256] = {};
-   byte ch;
 
-   uint16_t unique_characters = 0;
+   state.unique_chars = 0;
+   byte ch;
 
    // Reads the file character-wise incrementing for the corresponding
    // character frequency and file length
-   while (getchar(state.hufifile, ch)) {
-      if (!character_buffer[ch])
-         unique_characters++;
+   while (getchar(state.ifile, ch)) {
+      if (!state.character_buffer[ch].count)
+         state.unique_chars++;
 
-      character_buffer[ch]++;
+      state.character_buffer[ch].count++;
    }
 
-   if (unique_characters <= 1) {
+   if (state.unique_chars <= 1) {
       return false; // Temporary
    }
 
+   state.flags.true_tree = 1;
+
    // A full tree with n leaf-nodes will always have 2n - 1 nodes
-   state.base = new (std::nothrow) Node[2 * unique_characters - 1];
+   state.base = new (std::nothrow) Node[2 * state.unique_chars - 1];
    if (!state.base) return false;
 
    state.head = undefined;
@@ -60,10 +55,10 @@ bool HuffmanCoding::find_frequencies(State& state) {
 
    while (true) {
       // Check whether the frequency is non-zero
-      if (character_buffer[ch]) {
+      if (state.character_buffer[ch].count) {
 
          // Set stuff up
-         state.base[state.index].frequency = character_buffer[ch];
+         state.base[state.index].frequency = state.character_buffer[ch].count;
          state.base[state.index].character = ch;
          state.base[state.index].height = 0;
 
@@ -75,7 +70,7 @@ bool HuffmanCoding::find_frequencies(State& state) {
 
          while (true) {
             if (*node == undefined) break;
-            if (state.base[*node].frequency >= character_buffer[ch]) break;
+            if (state.base[*node].frequency >= state.character_buffer[ch].count) break;
 
             node = &state.base[*node].next_node;
          }
@@ -92,8 +87,7 @@ bool HuffmanCoding::find_frequencies(State& state) {
          state.index++;
       }
 
-   continuing:
-      // Stops when ch is 0, if not 0, decrements it;
+      // Stops when ch is 0, if not 0, decrements it
       if (!ch) break;
       ch--;
    }
@@ -115,19 +109,19 @@ void HuffmanCoding::build_tree(State& state) {
 
       // Guarantees that the right child will never be higher than the left child
       if (state.base[state.head].height > state.base[next_node].height) {
-         
+
          state.base[state.index].left_child = next_node;
          state.base[state.index].rght_child = state.head;
 
          state.base[state.index].height = 1 + state.base[state.head].height;
-      
+
       } else {
          state.base[state.index].left_child = state.head;
          state.base[state.index].rght_child = next_node;
 
          state.base[state.index].height = 1 + state.base[next_node].height;
       }
-      
+
       while (true) {
 
          if (*node == undefined) break;
@@ -159,20 +153,109 @@ void HuffmanCoding::build_tree(State& state) {
    print_queue(state);
 }
 
-inline bool HuffmanCoding::getchar(HUFIFile& hufifile, byte& ch) {
-   if (hufifile.cursor >= hufifile.size) {
+void HuffmanCoding::build_header(State& state) {
 
-      if (feof(hufifile.file)) return false;
+   // Placeholder for the flags that will come later
+   // We must know the entropy first
+   HUFFile::putchar(state.ofile, 0);
 
-      hufifile.size = fread(hufifile.buffer, sizeof(byte), PAGE_SIZE, hufifile.file);
-      if (!hufifile.size) return false;
+   uint8_t length = BitTools::size(state.base[state.head].height);
+   uint8_t depth = 0; // Stores the relative depth of the tree
 
-      hufifile.length += hufifile.size;
-      hufifile.cursor = 0;
+   state.connections = new CodeWord[state.unique_chars];
+   state.branches = new byte[state.unique_chars * length];
+
+   CodeWord* connections = state.connections;
+   byte* branches = state.branches;
+
+   for (byte i = 0; i < length; i++) {
+      branches[i] = 0;
    }
 
-   ch = hufifile.buffer[hufifile.cursor++];
-   return true;
+   uint64_t entropy = 0;
+
+   // The head will now be used as a stack top
+   while (true) {
+
+      if (state.base[state.head].height) {
+
+         // Tree branching stuff here...
+
+         // Pointer jugling, take your time (Sets up for popping the stack later)
+         //                                    ┌───┐
+         //    [h] → [n]    ┌──── [h]   [n]   [h]  ↓
+         //  ┌──┴──┐     => │   ┌──┴──┐  ↑  =  │  [l] → [r] → [n]
+         // [l]   [r]       └→ [l] → [r] ┘     └───┴─────┘
+         //
+         state.base[state.base[state.head].rght_child].next_node = state.base[state.head].next_node;
+         state.base[state.base[state.head].left_child].next_node = state.base[state.head].rght_child;
+         state.base[state.head].next_node = state.base[state.head].left_child;
+
+         depth++; // If a tree has branched (has children), the depth is incremented
+
+      } else {
+
+         byte ch = state.base[state.head].character;
+         HUFFile::putchar(state.ofile, ch);
+
+         entropy += depth * state.base[state.head].frequency; // ∑L(x)f(x)
+         
+         state.character_buffer[ch].code = connections;
+         connections->branch = branches;
+         connections->length = depth;
+
+         /* Well, I did explain it, after all :>
+         *
+         *  Enjoy a Turing Machine!!!
+         *  States:            {q₀, q₁, HALT};
+         *  Symbols:           {0, 1, _};
+         *  Blank symbol:      _;
+         *  Initial state:     q₀;
+         *  Behavior function: δ.
+         *
+         *             Instruction table for δ
+         *  Configuration       Behavior
+         *  State     Symbol    Symbol    Movement  State
+         *  q₀        0         1         R         q₁
+         *  q₀        1         0         R         q₀
+         *  q₁        0         0         R         q₁
+         *  q₁        1         1         R         q₁
+         *  q₁        _         _                   HALT
+         *
+         *  For any branch code member of 1ⁿ{0,1}*, n is decremented from the depth,
+         *  means unbranching (exiting a branch)
+         */
+         byte i = depth - 1;
+         BitTools::flipbit(connections->branch, i);
+         
+         if (i) {
+            if (BitTools::getbit(connections->branch, i)) do {
+               i--;
+               depth--;
+            } while (!BitTools::getbit(connections->branch, i) && i);
+
+            else do i--;
+            while (!BitTools::flipbit(connections->branch, i) && i);
+         }
+
+         if (state.base[state.head].next_node == undefined) break;
+
+         branches += length;
+
+         for (byte i = 0; i < length; i++)
+            branches[i] = connections->branch[i];
+
+         connections++;
+      }
+
+      // Pops the stack
+      state.head = state.base[state.head].next_node;
+   }
+
+   std::cout << "Entropy: " << (float)entropy / state.size << '\n';
+   std::cout << "Total character count: " << state.size << '\n';
+
+   state.flags.last_byte = entropy & 0b111;
 }
 
 /*

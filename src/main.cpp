@@ -2,6 +2,6 @@
 #include <iostream>
 
 int main(int argc, char** argv) {
-   HuffmanCoding::encode("./rc/b.txt", "./rc/b.txt.huf");
+   HuffmanCoding::encode("./rc/b.html", "./rc/b.html.huf");
    return 0;
 }

@@ -14,7 +14,7 @@ Um bit é a unidade mínima de informação, podendo assumir um de dois valores,
 
 Uma palavra binária é uma $`k`$-túpla ordenada $`\omega = \langle \omega_0 \omega_1 \omega_2 \cdots \omega_{k - 1} \rangle`$ de bits, ou seja, $`\omega_n \in \{0,1\}`$. Uma palavra binária que é uma $`k`$-túpla é chamada palavra de $`k`$-bits. Palavras vazias, ou seja, com $`k = 0`$, não são consideradas palavras binárias, pois não carregam informação. Para claridade, espaçamento interno é permitido, exemplo, $`\langle 1010 ~ 0111 ~ 1001 \rangle`$ é mais legível que $`\langle 101001111001 \rangle`$.
 
-O $`n`$-ésimo bit de uma palavra $`k`$-bits $`\omega`$ ($`0`$-ésimo bit é o primeiro bit e $`(k - 1)`$-ésimo bit é o último bit) é dado por $`\omega_n`$, se $`n \le k`$, então $`\omega_n = 0`$. Uma sub-palavra binária do $`n`$-ésimo bit até o $`m`$-ésimo bit, denotada $`\omega_{n..m}`$, é dada $`\omega_{n..m} = \langle \omega_n \omega_{n + 1} \omega_{n + 2} \cdots \omega_{m - 1} \omega_{m} \rangle`$, caso $`n = 0`$, $`\omega_{n..m}`$ pode ser denotado $`\omega_{..m}`$, analogamente, caso $`m = k`$, $`\omega_{n..m}`$ pode ser denotado $`\omega_{n..}`$.
+O $`n`$-ésimo bit de uma palavra $`k`$-bits $`\omega`$ ($`0`$-ésimo bit é o primeiro bit e $`(k - 1)`$-ésimo bit é o último bit) é dado por $`\omega_n`$, se $`n \le k`$, então $`\omega_n = 0`$. Uma sub-palavra binária do $`n`$-ésimo bit até o $`m`$-ésimo bit, denotada $`\omega_{n..m}`$, é dada $`\omega_{n..m} = \langle \omega_n \omega_{n + 1} \omega_{n + 2} \cdots \omega_{m - 1} \rangle`$, caso $`n = 0`$, $`\omega_{n..m}`$ pode ser denotado $`\omega_{..m}`$, analogamente, caso $`m = k`$, $`\omega_{n..m}`$ pode ser denotado $`\omega_{n..}`$.
 
 ### Definição C: Zero
 
@@ -24,10 +24,10 @@ A palavra binária zero $`\mathbf{0}`$ é definida como uma k-túpla arbitrária
 
 #### i) Negação
 
-_Negação_, _inversão lógica_ ou _complemento de um_, $` \mathord\sim : \{0,1\}^k \longrightarrow \{0,1\}^k`$, é definido:
+_Negação_, _inversão lógica_ ou _complemento de um_, $` \mathbin\sim : \{0,1\}^k \longrightarrow \{0,1\}^k`$, é definido:
 
-* $`\mathord\sim b = 1 \iff b = 0`$, para $`b \in \{0,1\}`$;
-* $`\mathord\sim \langle \omega, b \rangle = \langle \mathord\sim \omega, \mathord\sim b \rangle`$, para $`\omega \in \{0,1\}^{k - 1}`$ e $`b \in \{0,1\}`$.
+* $`\mathbin\sim b = 1 \iff b = 0`$, para $`b \in \{0,1\}`$;
+* $`\mathbin\sim \langle \omega, b \rangle = \langle \mathbin\sim \omega, \mathbin\sim b \rangle`$, para $`\omega \in \{0,1\}^{k - 1}`$ e $`b \in \{0,1\}`$.
 
 #### ii) Conjunção
 
@@ -55,18 +55,18 @@ _Disjunção exclusica_, _XOR_, _não eqivalência_, ou _ou exclusivo_, $`\oplus
 _Deslocamento esquerdo_, ou _left shift_, $`\gg: \{0,1\}^k \times \text{ℕ} \longrightarrow \{0,1\}^k`$, é definido:
 
 * $`\omega \gg 0 = \omega`$;
-* $`\langle \omega, b \rangle \gg n = \langle 0, \omega \rangle \gg n - 1`$, para $`\omega \in \{0,1\}^{k - 1}`$ e $`b \in \{0,1\}`$.
+* $`\langle b, \omega \rangle \gg n = \langle \omega, 0 \rangle \gg n - 1`$, para $`\omega \in \{0,1\}^{k - 1}`$ e $`b \in \{0,1\}`$.
 
 #### vi) Deslocamento direito
 
 _Deslocamento direito_, ou _right shift_, $`\ll: \{0,1\}^k \times \text{ℕ} \longrightarrow \{0,1\}^k`$, é definido:
 
 * $`\omega \ll 0 = \omega`$;
-* $`\langle b, \omega \rangle \ll n = \langle \omega, 0 \rangle \ll n - 1`$, para $`\omega \in \{0,1\}^{k - 1}`$ e $`b \in \{0,1\}`$.
+* $`\langle \omega, b \rangle \ll n = \langle 0, \omega \rangle \ll n - 1`$, para $`\omega \in \{0,1\}^{k - 1}`$ e $`b \in \{0,1\}`$.
 
 ### Definição E: Operações Compactantes
 
-Operações compactantes são predicados que reduzem uma palavra de $`k`$-bits para um valor de verdade, $`True`$ e $`False`$. Esses operam juntamente a suas versões analogas na lógica classica, inclusive usadando notação comumente usadas nesta.
+Operações compactantes são predicados que reduzem uma palavra de $`k`$-bits para um valor de verdade, $`True`$ e $`False`$. Esses operam juntamente a suas versões analogas na lógica classica, inclusive usando notação comumente usadas nesta.
 
 Primeiro define-se o predicado $`I`$, chamado de interpretação, definido $`I[\omega] \iff \exists n; \omega_n = 1`$.
 
@@ -101,11 +101,11 @@ Algumas formas, quando interpretadas, vão gerar a mesma interpretação, como p
 \begin{align*}
    \omega \mathbin\& \psi = \psi 
       &\iff \lnot ((\omega \mathbin\& \psi) \oplus \psi) \\
-      &\iff \lnot (((\omega \mathbin\& \psi) \mathbin\& \mathord\sim\psi) \mid (\mathord\sim(\omega \mathbin\& \psi) \mathbin\& \psi)) \\
-      &\iff \lnot ((\omega \mathbin\& \psi \mathbin\& \mathord\sim\psi) \mid ((\mathord\sim\omega \mid \mathord\sim\psi) \mathbin\& \psi)) \\
-      &\iff \lnot ((\omega \mathbin\& \mathbf{0}) \mid ((\mathord\sim\omega \mathbin\& \psi) \mid (\mathord\sim\psi \mathbin\& \psi))) \\
-      &\iff \lnot (\mathbf{0} \mid (\mathord\sim\omega \mathbin\& \psi) \mid \mathbf{0}) \\
-      &\iff \lnot (\mathord\sim\omega \mathbin\& \psi) \\
+      &\iff \lnot (((\omega \mathbin\& \psi) \mathbin\& \mathbin\sim\psi) \mid (\mathbin\sim(\omega \mathbin\& \psi) \mathbin\& \psi)) \\
+      &\iff \lnot ((\omega \mathbin\& \psi \mathbin\& \mathbin\sim\psi) \mid ((\mathbin\sim\omega \mid \mathbin\sim\psi) \mathbin\& \psi)) \\
+      &\iff \lnot ((\omega \mathbin\& \mathbf{0}) \mid ((\mathbin\sim\omega \mathbin\& \psi) \mid (\mathbin\sim\psi \mathbin\& \psi))) \\
+      &\iff \lnot (\mathbf{0} \mid (\mathbin\sim\omega \mathbin\& \psi) \mid \mathbf{0}) \\
+      &\iff \lnot (\mathbin\sim\omega \mathbin\& \psi) \\
 \end{align*}
 ```
 
@@ -114,12 +114,13 @@ Há bastante informação nessa fórmula, como porque aquela disjunção exclusi
 ```math
 \omega \mathbin\& \psi = \psi
    \iff \lnot ((\omega \mathbin\& \psi) \oplus \psi)
-   \iff \lnot ((\omega \mathbin\& \psi) \oplus (\mathord\sim\mathbf{0} \mathbin\& \psi))
-   \iff \lnot ((\omega \oplus \mathord\sim\mathbf{0}) \mathbin\& \psi)
-   \iff \lnot (\mathord\sim\omega \mathbin\& \psi)
+   \iff \lnot ((\omega \mathbin\& \psi) \oplus (\mathbin\sim\mathbf{0} \mathbin\& \psi))
+   \iff \lnot ((\omega \oplus \mathbin\sim\mathbf{0}) \mathbin\& \psi)
+   \iff \lnot (\mathbin\sim\omega \mathbin\& \psi)
 ```
 
-### Teorema da Extensionalidade Bit-a-Bit: Se uma propriedade bit-a-bit é válida para bits únicos, então será válida para palavras binárias de tamanho arbitrário
+### Teorema da Extensionalidade Bit-a-Bit
+_Se uma propriedade bit-a-bit é válida para bits únicos, então será válida para palavras binárias de tamanho arbitrário._
 
 Uma propriedade bit-a-bit é definida. Sejam $`P(\omega_0, \omega_1, \dots, \omega_t)`$, $`\omega_i \in \{0,1\}^k; \forall i \le t `$ e $`Q(b_0, b_1, \dots, b_t)`$, $`b_i \in \{0,1\}; \forall i \le t `$ predicados. O predicado $`Q`$ tem uma interpretação qualquer e o predicado $`P`$ possui interpretação da seguinte forma, sendo, $`\forall i \le t`$, $`\psi_i \in \{0,1\}^k`$ e $`b_i \in \{0,1\}`$:
 
@@ -128,7 +129,8 @@ Uma propriedade bit-a-bit é definida. Sejam $`P(\omega_0, \omega_1, \dots, \ome
 
 A interpretação de $`P`$ é uma consequência direta da interpretação de $`Q`$, assim, por indução, usando $`P`$ e $`Q`$ definidos anteriormente. Para o passo base, palavra binárias serão bits nessa configuração, logo, pela definição, $`P`$ é equivalente a $`Q`$. Para o passo indutivo, assume-se $`P(\psi_0, \psi_1, \dots, \psi_t)`$ é válido, para seu sucessor tem-se: $`P(\langle \psi_0, b_0 \rangle, \langle \psi_1, b_1 \rangle, \dots, \langle \psi_t, b_t \rangle) \iff P(\psi_0, \psi_1, \dots, \psi_t) \land Q(b_0, b_1, \dots, b_t) \iff Q(b_0, b_1, \dots, b_t)`$. Assim, a validade da propriedade $`P`$ é equivale a validade da propriedade para bits único, ou seja, à validade de $`Q`$.
 
-### Corolário F: Propriedades Bit-a-Bit
+### Corolário F
+_Propriedades Bit-a-Bit._
 
 Pelo _Teorema da Extensionalidade Bit-a-Bit_, as operações discutidas serão provadas para bits individuais, partindo diretamente de suas definições.
 
