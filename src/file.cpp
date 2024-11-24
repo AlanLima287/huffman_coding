@@ -4,7 +4,7 @@
 const char ENCODED_FILE_EXTENSION[4] = "huf";
 
 int main(int argc, char** argv) {
-   // int main() { int argc = 2; char argv[][10] = { "", "a.txt" };
+   // int main() { int argc = 2; char argv[][10] = { "", "a.txt" }; // }
 
    if (argc < 2) {
       std::cerr << "No filepath has been given!";

@@ -1,26 +1,26 @@
 #pragma once
 
-// Checks whether a some pointer is valid, if so, accesses some field in a 
-// structure/object pointed by it, if not, then returns some default value
-
 #ifndef __SYSTEM___SPECIFICS___
 #define __SYSTEM___SPECIFICS___
 
-// UTF-8, ASCII extended and pure ascii respectivily
-// Assuming Linux terminals will support UTF-8
-
 void get_terminal_dimensions(unsigned short&, unsigned short&);
 inline bool system_specifics_setup();
+inline bool file_exists(const char*);
 
 #if defined(__linux__) || defined(__APPLE__)
 
 #include <sys/ioctl.h>
+#include <unistd.h>
 
 void get_terminal_dimensions(unsigned short& width, unsigned short& height) {
    struct winsize win;
    ioctl(fileno(stdout), TIOCGWINSZ, &win);
    width = (unsigned short)(win.ws_col);
    height = (unsigned short)(win.ws_row);
+}
+
+inline bool file_exists(const char* filename) {
+   return access(filename, F_OK);
 }
 
 inline bool system_specifics_setup() { return true; }
@@ -35,7 +35,7 @@ void get_terminal_dimensions(unsigned short& width, unsigned short& height) {
 
    height = (unsigned short)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
    width = (unsigned short)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
-}
+} 
 
 // The default code page, i.e, the encoding under which caracters are renderer,
 // is not guarantied to be UTF-8, this fixes that. Also enables the processing of
@@ -53,6 +53,11 @@ inline bool system_specifics_setup() {
    if (!SetConsoleMode(handle, dwMode)) return false;
 
    return true;
+}
+
+inline bool file_exists(const char* filename) {
+   DWORD attr = GetFileAttributesA(filename);
+   return attr != INVALID_FILE_ATTRIBUTES;
 }
 
 #endif

@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+#include "system.h"
+
 typedef unsigned char      byte;
 typedef unsigned short     word;
 typedef unsigned long      dword;
@@ -14,7 +16,7 @@ typedef unsigned long long qword;
 #define minimum(a, b) (((a) < (b)) ? (a) : (b))
 #define maximum(a, b) (((a) > (b)) ? (a) : (b))
 
-void print_char(char ch) {
+void print_character(char ch) {
 
    /*
    * Character printing convention:
@@ -35,14 +37,14 @@ void print_char(char ch) {
    */
 
    // The following notes show the recorded branching behavior
-   if (0x20 > ch || ch >= 0x7f) { // [0, 19] ∪ [7F, FF]
+   if (0x20 > ch || ch >= 0x7f) { // [0, 20) ∪ [7F, FF]
 
       putchar('\\');
 
-      if (ch < 0x07) printf("%hhu", ch);                 // [0, 7)
+      if (ch < 0x07) putchar('0' + ch);                  // [0, 7)
       else if (ch < 0x0E) putchar("abtnvfr"[ch - 0x07]); // [7, E)
       else if (ch < 0x1B) putchar('e');                  // {1B}
-      else printf("x%02x", ch);                          // [E, 1B) ∪ (1B, 1F] ∪ [7F, FF]
+      else printf("x%02hhx", ch);                        // [E, 1B) ∪ (1B, 1F] ∪ [7F, FF]
    }
 
    else if (ch == 0x20) printf("' '", ch); // {20}

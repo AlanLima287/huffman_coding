@@ -1,21 +1,21 @@
 #include "bittools.h"
 
-BitTools::byte* BitTools::construct(uint64_t size, byte set) {
-   size = BitTools::size(size);
+BitTools::byte* BitTools::construct(uint64_t length, byte set) {
+   length = BitTools::size(length);
 
-   byte* base = new (std::nothrow) byte[size];
+   byte* base = new (std::nothrow) byte[length];
    if (!base) return nullptr;
 
-   for (uint64_t i = 0; i < size; i++)
+   for (uint64_t i = 0; i < length; i++)
       base[i] = set;
 
    return base;
 }
 
-BitTools::byte* BitTools::initialize(byte* base, uint64_t size, byte set) {
-   size = BitTools::size(size);
+BitTools::byte* BitTools::initialize(byte* base, uint64_t length, byte set) {
+   length = BitTools::size(length);
 
-   for (uint64_t i = 0; i < size; i++)
+   for (uint64_t i = 0; i < length; i++)
       base[i] = set;
 
    return base;
@@ -105,8 +105,8 @@ inline bool BitTools::setbit(byte* base, uint64_t pos, bool bit_value) {
    int64_t offset = 1 << (pos & MASK);
 
    bool bit = *word & offset;
-   if (bit_value) *word &= ~offset;
-   else *word |= offset;
+   if (bit_value) *word |= offset;
+   else *word &= ~offset;
 
    return bit;
 }

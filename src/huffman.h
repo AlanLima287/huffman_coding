@@ -6,20 +6,17 @@
 
 namespace HuffmanCoding {
 
-   using intnode_t = unsigned short;
+   enum branch_t : byte { no_leaves, one_leaf, two_leaves };
 
    typedef struct Node {
       uint64_t frequency;
 
+      Node* next_node;
+      Node* child[2];
+
       byte character;
       byte height;
-
-      intnode_t left_child;
-      intnode_t rght_child;
-      intnode_t next_node;
    } Node;
-
-   const intnode_t undefined = (intnode_t)-1;
 
    typedef struct {
       uint8_t length;
@@ -30,15 +27,14 @@ namespace HuffmanCoding {
       HUFFile::File ifile;
       HUFFile::File ofile;
 
-      Node* base;
-      intnode_t head;
-      intnode_t index;
+      Node* head;
 
       uint16_t unique_chars;
 
       HUFFile::Flags flags;
       uint64_t size;
 
+      Node* base;
       CodeWord* connections;
       byte* branches;
 
@@ -48,35 +44,47 @@ namespace HuffmanCoding {
       } character_buffer[256] = {};
    } State; // Meant for passing stuff around, I might planify it later
 
-   inline bool find_frequencies(State&);
-   inline void build_tree(State&);
-   inline void build_header(State&);
-   inline void encode_file(State&);
+   bool open_files(State&, const char*, const char*);
 
    bool encode(const char*, const char*);
 
-   bool decode(const char* input_filename, const char* output_filename) {
-      return false;
-   }
+   namespace encoding {
+      inline byte find_frequencies(State&);
+      inline bool build_queue(State&);
+      inline void build_tree(State&);
+      inline bool build_header(State&);
+   };
+
+   bool decode(const char*, const char*);
+
+   namespace decoding {
+      inline bool build_tree(State&);
+      
+      inline bool build_tree_branch(State&, Node**);
+      inline bool build_tree_leaf(State&, Node**);
+
+      inline bool get_character(State&, byte&);
+   };
+
 
    void print_queue(State&);
-   void print_inline_tree(State&, intnode_t);
-   void print_inline_tree_recusive_step(State&, intnode_t);
+   void print_inline_tree(Node*);
+   void print_inline_tree_recusive_step(Node*);
 
    void print_queue(State& state) {
-      if (state.head == undefined) {
+      if (!state.head) {
          std::cout.write("{}\n", 3);
          return;
       }
 
-      intnode_t n = state.head;
+      Node* node = state.head;
 
       while (true) {
-         print_inline_tree(state, n);
-         std::cout << ": " << state.base[n].frequency;
+         print_inline_tree(node);
+         std::cout << ": " << node->frequency;
 
-         n = state.base[n].next_node;
-         if (n == undefined) break;
+         node = node->next_node;
+         if (!node) break;
 
          std::cout.write(", ", 2);
       }
@@ -84,34 +92,32 @@ namespace HuffmanCoding {
       std::cout.put('\n');
    }
 
-   void print_inline_tree(State& state, intnode_t index) {
-      if (index == undefined) return;
+   void print_inline_tree(Node* node) {
+      if (!node) return;
 
-      if (state.base[index].left_child == state.base[index].rght_child) {
-         print_char(state.base[index].character);
+      if (node->child[0] == node->child[1]) {
+         print_character(node->character);
          return;
       }
 
-      print_inline_tree_recusive_step(state, state.base[index].left_child);
-      print_inline_tree_recusive_step(state, state.base[index].rght_child);
+      print_inline_tree_recusive_step(node->child[0]);
+      print_inline_tree_recusive_step(node->child[1]);
    }
 
-   void print_inline_tree_recusive_step(State& state, intnode_t index) {
-      if (
-         state.base[index].left_child == undefined &&
-         state.base[index].rght_child == undefined)
-      {
-         print_char(state.base[index].character);
+   void print_inline_tree_recusive_step(Node* node) {
+      
+      if (!node->child[0] && !node->child[1]) {
+         print_character(node->character);
          return;
       }
 
       std::cout.put('(');
 
-      if (state.base[index].left_child != undefined)
-         print_inline_tree_recusive_step(state, state.base[index].left_child);
+      if (node->child[0])
+         print_inline_tree_recusive_step(node->child[0]);
 
-      if (state.base[index].rght_child != undefined)
-         print_inline_tree_recusive_step(state, state.base[index].rght_child);
+      if (node->child[1])
+         print_inline_tree_recusive_step(node->child[1]);
 
       std::cout.put(')');
    }
