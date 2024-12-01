@@ -2,16 +2,16 @@
 
 #include "huffman.h"
 
-bool HuffmanCoding::open_files(State& state, const char* input_filename, const char* output_filename) {
+bool HuffmanCoding::open_files(HUFFile::File& ifile, HUFFile::File& ofile, const char* input_filename, const char* output_filename) {
 
    using HUFFile::exit_t, HUFFile::mode_t;
 
    exit_t response;
 
-   response = HUFFile::open(state.ifile, input_filename, mode_t::read);
+   response = HUFFile::open(ifile, input_filename, mode_t::read);
    if (response != exit_t::success) goto error;
 
-   response = HUFFile::open(state.ofile, output_filename, mode_t::overwrite /* temp, remember to put it back to just write */);
+   response = HUFFile::open(ofile, output_filename, mode_t::write);
 
    if (response == exit_t::file_already_exists) while (true) {
       std::cout << "O arquivo " << output_filename << " já existe, deseja sobreescreve-lo ([s]im ou [n]ão)? ";
@@ -22,7 +22,8 @@ bool HuffmanCoding::open_files(State& state, const char* input_filename, const c
       if (answer == 'n') return false;
       if (answer != 's') continue;
 
-      response = HUFFile::open(state.ofile, output_filename, mode_t::overwrite);
+      response = HUFFile::open(ofile, output_filename, mode_t::overwrite);
+      break;
    }
 
    if (response == exit_t::success) return true;
@@ -34,7 +35,7 @@ error:
          break;
 
       case exit_t::bad_allocation:
-         std::cout.write("\e[37;41;1mErro Fatal:\e[0;31m Má Alocação\e[m", 46);
+         std::cout.write(BAD_ALLOCATION, sizeof(BAD_ALLOCATION) - 1);
          break;
    }
 
@@ -45,11 +46,11 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
 
    using HUFFile::exit_t;
 
-   State state;
+   encoding::State state;
    byte last_ch;
 
-   if (!open_files(state, input_filename, output_filename)) {
-      return false;
+   if (!open_files(state.ifile, state.ofile, input_filename, output_filename)) {
+      return true;
    }
 
    state.flags.literal = 0;
@@ -116,7 +117,7 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
    return true;
 
 bad_allocation:
-   std::cout.write("\e[37;41;1mErro Fatal:\e[0;31m Má Alocação\e[m", 46);
+   std::cout.write(BAD_ALLOCATION, sizeof(BAD_ALLOCATION) - 1);
    return false;
 }
 
@@ -124,10 +125,10 @@ bool HuffmanCoding::decode(const char* input_filename, const char* output_filena
 
    using HUFFile::exit_t;
 
-   State state;
+   decoding::State state;
 
-   if (!open_files(state, input_filename, output_filename)) {
-      return false;
+   if (!open_files(state.ifile, state.ofile, input_filename, output_filename)) {
+      return true;
    }
 
    if (!HUFFile::getbyte(state.ifile, state.flags.literal)) {
@@ -142,7 +143,7 @@ bool HuffmanCoding::decode(const char* input_filename, const char* output_filena
          uint64_t count = 0;
 
          // Get that one character
-         HUFFile::getbyte(state.ifile, character);
+         if (!HUFFile::getbyte(state.ifile, character)) break;
 
          // Get the number of repetitions
          for (uint8_t i = 0; HUFFile::getbyte(state.ifile, ch); i += 8) {
@@ -159,23 +160,35 @@ bool HuffmanCoding::decode(const char* input_filename, const char* output_filena
 
       // The file was encoded under the Huffman coding
       case 1: {
-         decoding::build_tree_branch(state, &state.head);
-         print_inline_tree(state.head);
+         
+         // The -1 reffers to the flag byte already computed
+         state.size = (HUFFile::file_size(state.ifile) - 1) << 3;
+         if (state.flags.header.last_byte) 
+            state.size -= 8 - state.flags.header.last_byte;
+         
+         if (!decoding::build_tree_branch(state, &state.head))
+            goto bad_allocation;
+         // print_inline_tree(state.head);
 
-         while (true) {
-            byte ch;
-            if (!decoding::get_character(state, ch)) {
-               goto terminate;
-            }
+         uint64_t i = 0;
 
-            HUFFile::putchar(state.ofile, ch);
+         do {
+            Node* node = state.head;
+            byte bit;
 
-            if (state.ifile.size > 8 + state.ifile.cursor) continue;
-            if ((state.ifile.cursor & 0b111) < state.flags.header.last_byte) continue;
-               
-            HUFFile::flush(state.ofile);
-            goto terminate;
-         }
+            do {
+               if (!HUFFile::getbit(state.ifile, bit)) goto finish;
+               node = node->child[bit];
+               i++;
+            } while (node->height);
+
+            HUFFile::putchar(state.ofile, node->character);
+
+         } while (i < state.size);
+         
+      finish:
+         HUFFile::flush(state.ofile);
+         decoding::destroy_tree(state.head);
 
       } break;
    }
@@ -184,6 +197,10 @@ terminate:
    HUFFile::close(state.ifile);
    HUFFile::close(state.ofile);
    return true;
+
+bad_allocation:
+   std::cout.write(BAD_ALLOCATION, sizeof(BAD_ALLOCATION) - 1);
+   return false;
 }
 
 byte HuffmanCoding::encoding::find_frequencies(State& state) {
@@ -376,7 +393,7 @@ bool HuffmanCoding::encoding::build_header(State& state) {
          switch (state.head->character) {
             case no_leaves:  branch_style = 0b11; length = 2; break;
             case one_leaf:   branch_style = 0b01; length = 2; break;
-            case two_leaves: branch_style = 0b00; length = 1; break;
+            case two_leaves: branch_style = 0b0;  length = 1; break;
          }
 
          HUFFile::putbits(state.ofile, &branch_style, length);
@@ -444,7 +461,6 @@ bool HuffmanCoding::encoding::build_header(State& state) {
 
          if (state.head->next_node == nullptr) break;
 
-
          // The current code will be used as a base for the next one
          branches += length;
 
@@ -475,20 +491,25 @@ bool HuffmanCoding::decoding::build_tree_branch(State& state, Node** node) {
 
    byte bit;
    HUFFile::getbit(state.ifile, bit);
+   state.size--;
 
    if (!bit) {
-
-      build_tree_leaf(state, &(*node)->child[0]);
-      build_tree_leaf(state, &(*node)->child[1]);
+      
+      if (!build_tree_leaf(state, &(*node)->child[0])) return false;
+      if (!build_tree_leaf(state, &(*node)->child[1])) return false;
 
    } else {
 
       HUFFile::getbit(state.ifile, bit);
+      state.size--;
 
-      if (!bit) build_tree_leaf(state, &(*node)->child[0]);
-      else build_tree_branch(state, &(*node)->child[0]);
+      if (!bit) {
+         if (!build_tree_leaf(state, &(*node)->child[0])) return false;
+      } else {
+         if (!build_tree_branch(state, &(*node)->child[0])) return false;
+      }
 
-      build_tree_branch(state, &(*node)->child[1]);
+      if (!build_tree_branch(state, &(*node)->child[1])) return false;
    }
 
    return true;
@@ -496,22 +517,30 @@ bool HuffmanCoding::decoding::build_tree_branch(State& state, Node** node) {
 
 bool HuffmanCoding::decoding::build_tree_leaf(State& state, Node** node) {
    byte ch;
-   HUFFile::getbyte(state.ifile, ch);
+   if (!HUFFile::getbyte(state.ifile, ch)) return false;
+   state.size -= 8;
 
    *node = new (std::nothrow) Node{ 0, nullptr, nullptr, nullptr, ch, 0 };
    return *node != nullptr;
 }
 
-bool HuffmanCoding::decoding::get_character(State& state, byte& ch) {
+void HuffmanCoding::decoding::destroy_tree(Node* root) {
+   
+   while (root) {
+      
+      if (root->child[0]) {
+         root->next_node = root;
+         root = root->child[0];
+      }
+      
+      if (root->child[1]) {
+         root->next_node = root;
+         root = root->child[1];
+      }
 
-   Node* node = state.head;
-   byte bit;
-
-   do {
-      HUFFile::getbit(state.ifile, bit);
-      node = node->child[bit];
-   } while (node->height);
-
-   ch = node->character;
-   return true;
+      Node* tmp = root->next_node;
+      
+      delete root;
+      root = tmp;
+   }
 }

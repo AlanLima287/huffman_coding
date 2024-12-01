@@ -23,32 +23,32 @@ namespace HuffmanCoding {
       byte* branch;
    } CodeWord;
 
-   typedef struct {
-      HUFFile::File ifile;
-      HUFFile::File ofile;
-
-      Node* head;
-
-      uint16_t unique_chars;
-
-      HUFFile::Flags flags;
-      uint64_t size;
-
-      Node* base;
-      CodeWord* connections;
-      byte* branches;
-
-      union {
-         uint64_t count;
-         CodeWord* code;
-      } character_buffer[256] = {};
-   } State; // Meant for passing stuff around, I might planify it later
-
-   bool open_files(State&, const char*, const char*);
-
+   bool open_files(HUFFile::File&, HUFFile::File&, const char*, const char*);
+   
    bool encode(const char*, const char*);
 
    namespace encoding {
+      typedef struct {
+         HUFFile::File ifile;
+         HUFFile::File ofile;
+
+         Node* head;
+
+         uint16_t unique_chars;
+
+         HUFFile::Flags flags;
+         uint64_t size;
+
+         Node* base;
+         CodeWord* connections;
+         byte* branches;
+
+         union {
+            uint64_t count;
+            CodeWord* code;
+         } character_buffer[256];
+      } State; // Meant for passing stuff around, I might planify it later
+
       inline byte find_frequencies(State&);
       inline bool build_queue(State&);
       inline void build_tree(State&);
@@ -58,26 +58,35 @@ namespace HuffmanCoding {
    bool decode(const char*, const char*);
 
    namespace decoding {
-      inline bool build_tree(State&);
-      
+      typedef struct {
+         HUFFile::File ifile;
+         HUFFile::File ofile;
+
+         Node* head;
+
+         HUFFile::Flags flags;
+         uint64_t size;
+      } State; // Meant for passing stuff around, I might planify it later
+
       inline bool build_tree_branch(State&, Node**);
       inline bool build_tree_leaf(State&, Node**);
 
-      inline bool get_character(State&, byte&);
+      inline void destroy_tree(Node*);
    };
 
-
-   void print_queue(State&);
+   void print_queue(Node*);
+   
+   void print_tree(Node*);
    void print_inline_tree(Node*);
    void print_inline_tree_recusive_step(Node*);
 
-   void print_queue(State& state) {
-      if (!state.head) {
+   void print_queue(Node* head) {
+      if (!head) {
          std::cout.write("{}\n", 3);
          return;
       }
 
-      Node* node = state.head;
+      Node* node = head;
 
       while (true) {
          print_inline_tree(node);
@@ -90,6 +99,18 @@ namespace HuffmanCoding {
       }
 
       std::cout.put('\n');
+   }
+
+   void print_tree(Node* node) {
+      if (!node) return;
+
+      if (node->child[0] == node->child[1]) {
+         print_character(node->character);
+         return;
+      }
+
+      print_inline_tree_recusive_step(node->child[0]);
+      print_inline_tree_recusive_step(node->child[1]);
    }
 
    void print_inline_tree(Node* node) {

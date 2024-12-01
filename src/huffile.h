@@ -34,9 +34,10 @@ namespace HUFFile {
       byte* buffer; // The file buffer
    } File;
 
-   inline exit_t open(File&, const char* filename, byte mode);
+   inline exit_t open(File&, const char* filename, mode_t mode);
    inline void close(File&);
    
+   inline uint64_t file_size(File&);
    inline void rewind(File&);
 
    inline bool getchar(File&, byte&);

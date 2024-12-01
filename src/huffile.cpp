@@ -1,6 +1,6 @@
 #include "huffile.h"
 
-HUFFile::exit_t HUFFile::open(File& file, const char* filename, byte mode) {
+HUFFile::exit_t HUFFile::open(File& file, const char* filename, mode_t mode) {
 
    switch (mode) {
       case mode_t::read:
@@ -43,6 +43,17 @@ void HUFFile::close(File& file) {
    fclose(file.file);
 }
 
+uint64_t HUFFile::file_size(File& file) {
+   uint64_t cursor = ftell(file.file);
+   fseek(file.file, 0, SEEK_END);
+
+   uint64_t size = ftell(file.file);
+   fseek(file.file, cursor, SEEK_SET);
+
+   return size;
+}
+
+
 void HUFFile::rewind(File& file) {
    fseek(file.file, 0, SEEK_SET);
 
@@ -64,7 +75,7 @@ bool HUFFile::getchar(File& file, byte& ch) {
 }
 
 void HUFFile::putbits(File& file, byte* base, uint64_t length) {
-   const uint64_t page_size_bits = PAGE_SIZE * (sizeof(byte) << 3);
+   uint64_t page_size_bits = PAGE_SIZE * (sizeof(byte) << 3);
    uint64_t i = 0;
 
    while (true) {
@@ -118,6 +129,10 @@ void HUFFile::putchar(File& file, byte ch) {
 
 void HUFFile::flushbits(File& file) {
    if (file.cursor) {
+      if (file.cursor & 0b111) {
+         file.buffer[file.cursor >> 3] &= byte(0xFF >> (8 - (file.cursor & 0b111)));
+      }
+
       fwrite(file.buffer, sizeof(byte), BitTools::size(file.cursor), file.file);
       file.cursor = 0;
    }

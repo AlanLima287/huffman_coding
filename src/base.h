@@ -1,11 +1,13 @@
 #pragma once
 
 #include <stdint.h>
+#include <string.h>
 #include <stdio.h>
 #include <errno.h>
 
 #include <iostream>
 
+#include "../lib/terminal.h"
 #include "system.h"
 
 typedef unsigned char      byte;
@@ -16,7 +18,9 @@ typedef unsigned long long qword;
 #define minimum(a, b) (((a) < (b)) ? (a) : (b))
 #define maximum(a, b) (((a) > (b)) ? (a) : (b))
 
-void print_character(char ch) {
+const char BAD_ALLOCATION[] = "\e[37;41;1mErro Fatal:\e[0;31m Má Alocação\e[m";
+
+void print_character(byte ch) {
 
    /*
    * Character printing convention:
@@ -41,10 +45,10 @@ void print_character(char ch) {
 
       putchar('\\');
 
-      if (ch < 0x07) putchar('0' + ch);                  // [0, 7)
-      else if (ch < 0x0E) putchar("abtnvfr"[ch - 0x07]); // [7, E)
-      else if (ch < 0x1B) putchar('e');                  // {1B}
-      else printf("x%02hhx", ch);                        // [E, 1B) ∪ (1B, 1F] ∪ [7F, FF]
+      if (ch < 0x07) putchar('0' | ch);                   // [0, 7)
+      else if (ch <= 0x0D) putchar("abtnvfr"[ch - 0x07]); // [7, D]
+      else if (ch == 0x1B) putchar('e');                  // {1B}
+      else printf("x%02hhx", ch);                   // [E, 1B) ∪ (1B, 1F] ∪ [7F, FF]
    }
 
    else if (ch == 0x20) printf("' '", ch); // {20}
@@ -71,5 +75,69 @@ void print_file_opening_error(errno_t err) {
       case EROFS:        printf("Read-only file system. Cannot write to a file on a read-only file system.\n"); break;
       case ETXTBSY:      printf("Text file busy. The file is open for writing by another process.\n"); break;
       default:           printf("An unknown error occurred. Error code: %d\n", err); break;
+   }
+}
+
+uint64_t print_in_column(const char* text, word start, word end) {
+   esc::move_to(start);
+
+   uint64_t length = 0;
+   uint64_t index = 0;
+   uint64_t lines = 0;
+
+   word width = end - start;
+
+   while (true) {
+
+      switch (text[index]) {
+         case '\0':
+            if (index > 0) {
+               std::cout.write(text, index);
+               lines++;
+            }
+
+            return lines;
+
+         case '\n':
+            if (index > 0) {
+               std::cout.write(text, ++index);
+               text += index;
+
+               length = 0;
+               index = 0;
+            } else {
+               std::cout.put('\n');
+               text++;
+            }
+
+            esc::move_to(start);
+            lines++;
+            
+            continue;
+
+         case ' ':
+            length = index;
+            break;
+      }
+
+      if (index >= width) {
+
+         uint8_t inc = 0;
+
+         if (!length) { length = width; index = 0; } 
+         else { index -= length; inc = 1; }
+
+         std::cout.write(text, length);
+         text += length + inc;
+         length = 0;
+
+         std::cout.put('\n');
+         esc::move_to(start);
+         lines++;
+
+         continue;
+      }
+
+      index++;
    }
 }

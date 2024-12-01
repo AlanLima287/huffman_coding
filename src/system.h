@@ -3,10 +3,6 @@
 #ifndef __SYSTEM___SPECIFICS___
 #define __SYSTEM___SPECIFICS___
 
-void get_terminal_dimensions(unsigned short&, unsigned short&);
-inline bool system_specifics_setup();
-inline bool file_exists(const char*);
-
 #if defined(__linux__) || defined(__APPLE__)
 
 #include <sys/ioctl.h>
@@ -45,12 +41,13 @@ inline bool system_specifics_setup() {
    if (handle == INVALID_HANDLE_VALUE) return false;
 
    if (!SetConsoleOutputCP(CP_UTF8)) return false;
+   if (!SetConsoleCP(CP_UTF8)) return false;
 
-   DWORD dwMode = 0;
-   if (!GetConsoleMode(handle, &dwMode)) return false;
+   DWORD mode = 0;
+   if (!GetConsoleMode(handle, &mode)) return false;
 
-   dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-   if (!SetConsoleMode(handle, dwMode)) return false;
+   mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+   if (!SetConsoleMode(handle, mode)) return false;
 
    return true;
 }
