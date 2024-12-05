@@ -57,24 +57,24 @@ void print_character(byte ch) {
 
 void print_file_opening_error(int err) {
    switch (err) {
-      case EACCES:       printf("Permission denied. You don't have the right permissions to access this file.\n"); break;
-      case EEXIST:       printf("File already exists. Cannot create a new file with the same name.\n"); break;
-      case EFAULT:       printf("Bad address. The file path points outside your accessible address space.\n"); break;
-      case EFBIG:        printf("File too large. The file exceeds the maximum allowed size on this file system.\n"); break;
-      case EINTR:        printf("Operation interrupted by a signal.\n"); break;
-      case EINVAL:       printf("Invalid argument. Check the open mode or flags used.\n"); break;
-      case EIO:          printf("I/O error. There was an issue with the hardware or storage device.\n"); break;
-      case EISDIR:       printf("Is a directory. You tried to open a directory as if it were a file.\n"); break;
-      case EMFILE:       printf("Too many open files. The process has reached its file descriptor limit.\n"); break;
-      case ENAMETOOLONG: printf("File name too long. The file name exceeds the system-defined length limit.\n"); break;
-      case ENFILE:       printf("Too many open files in the system. The system-wide limit has been reached.\n"); break;
-      case ENOENT:       printf("No such file or directory. The specified file does not exist.\n"); break;
-      case ENOMEM:       printf("Out of memory. Insufficient memory to allocate a new file descriptor.\n"); break;
-      case ENOSPC:       printf("No space left on device. The storage device is full.\n"); break;
-      case ENOTDIR:      printf("Not a directory. A component of the path is not a directory.\n"); break;
-      case EROFS:        printf("Read-only file system. Cannot write to a file on a read-only file system.\n"); break;
-      case ETXTBSY:      printf("Text file busy. The file is open for writing by another process.\n"); break;
-      default:           printf("An unknown error occurred. Error code: %d\n", err); break;
+      case EACCES:       printf("Permissão negada. Você não tem permissão para acessar este arquivo.\n"); break;
+      case EEXIST:       printf("Arquivo já existe. Não é possível criar um novo arquivo com o mesmo nome.\n"); break;
+      case EFAULT:       printf("Endereço inválido. O caminho do arquivo aponta para fora do seu espaço de endereço acessível.\n"); break;
+      case EFBIG:        printf("Arquivo muito grande. O arquivo excede o tamanho máximo permitido neste sistema de arquivos.\n"); break;
+      case EINTR:        printf("Operação interrompida por um sinal.\n"); break;
+      case EINVAL:       printf("Argumento inválido. Verifique o modo de abertura ou as flags usadas.\n"); break;
+      case EIO:          printf("Erro de E/S. Houve um problema com o hardware ou dispositivo de armazenamento.\n"); break;
+      case EISDIR:       printf("É um diretório. Você tentou abrir um diretório como se fosse um arquivo.\n"); break;
+      case EMFILE:       printf("Muitos arquivos abertos. O processo atingiu seu limite de descritores de arquivo.\n"); break;
+      case ENAMETOOLONG: printf("Nome de arquivo muito longo. O nome do arquivo excede o limite de comprimento definido pelo sistema.\n"); break;
+      case ENFILE:       printf("Muitos arquivos abertos no sistema. O limite do sistema foi atingido.\n"); break;
+      case ENOENT:       printf("Arquivo ou diretório não encontrado. O arquivo especificado não existe.\n"); break;
+      case ENOMEM:       printf("Memória insuficiente. Memória insuficiente para alocar um novo descritor de arquivo.\n"); break;
+      case ENOSPC:       printf("Sem espaço em disco. O dispositivo de armazenamento está cheio.\n"); break;
+      case ENOTDIR:      printf("Não é um diretório. Um componente do caminho não é um diretório.\n"); break;
+      case EROFS:        printf("Sistema de arquivos somente leitura. Não é possível escrever em um arquivo em um sistema de arquivos somente leitura.\n"); break;
+      case ETXTBSY:      printf("Arquivo de texto ocupado. O arquivo está aberto para escrita por outro processo.\n"); break;
+      default:           printf("Ocorreu um erro desconhecido. Código de erro: %d\n", err); break;
    }
 }
 
@@ -112,7 +112,7 @@ uint64_t print_in_column(const char* text, word start, word end) {
 
             esc::move_to(start);
             lines++;
-            
+
             continue;
 
          case ' ':
@@ -124,8 +124,7 @@ uint64_t print_in_column(const char* text, word start, word end) {
 
          uint8_t inc = 0;
 
-         if (!length) { length = width; index = 0; } 
-         else { index -= length; inc = 1; }
+         if (!length) { length = width; index = 0; } else { index -= length; inc = 1; }
 
          std::cout.write(text, length);
          text += length + inc;
