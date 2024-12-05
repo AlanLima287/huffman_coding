@@ -101,6 +101,7 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
 
          HUFFile::flushbits(state.ofile);
 
+         // Putting the flag now
          HUFFile::rewind(state.ofile);
          HUFFile::putbits(state.ofile, &state.flags.literal, 8);
 
@@ -241,6 +242,7 @@ bool HuffmanCoding::encoding::build_queue(State& state) {
 
          // Set stuff up
          index->frequency = state.character_buffer[ch].count;
+         index->next_node = nullptr;
          index->character = ch;
          index->height = 0;
 
@@ -250,12 +252,8 @@ bool HuffmanCoding::encoding::build_queue(State& state) {
 
          Node** node = &state.head;
 
-         while (true) {
-            if (*node == nullptr) break;
-            if ((*node)->frequency >= index->frequency) break;
-
+         while (*node && (*node)->frequency < index->frequency)
             node = &(*node)->next_node;
-         }
 
          /* Insert the new node [N] somewhere at the queue
          *
@@ -279,14 +277,10 @@ bool HuffmanCoding::encoding::build_queue(State& state) {
 
 void HuffmanCoding::encoding::build_tree(State& state) {
 
-   Node** node = &state.head;
    Node* index = state.base + state.unique_chars;
 
-   // Yes, the loop will execute state.unique_chars - 1 times,
-   // this was intentional
-   for (uint64_t i = state.unique_chars; i > 1; i--) {
-
-      // print_queue(state);
+   // Yes, the loop will execute state.unique_chars - 1 times, this was intentional
+   for (uint64_t i = 1; i < state.unique_chars; i++) {
 
       Node* next_node = state.head->next_node;
       index->frequency = state.head->frequency + next_node->frequency;
@@ -320,21 +314,15 @@ void HuffmanCoding::encoding::build_tree(State& state) {
       if (!index->child[1]->height) {
          index->character = two_leaves;
       } else {
-         if (!index->child[0]->height) {
+         if (!index->child[0]->height)
             index->character = one_leaf;
-         } else {
+         else
             index->character = no_leaves;
-         }
       }
 
-      while (*node) {
-         if ((*node)->frequency > index->frequency) break;
-         if ((*node)->frequency == index->frequency) {
-            if ((*node)->height >= index->height) break;
-         }
-
+      Node** node = &next_node->next_node;
+      while (*node && (*node)->frequency < index->frequency)
          node = &(*node)->next_node;
-      }
 
       /* Insert the new node [N] somewhere at the queue
       *
@@ -352,8 +340,6 @@ void HuffmanCoding::encoding::build_tree(State& state) {
 
       index++;
    }
-
-   // print_queue(state);
 }
 
 bool HuffmanCoding::encoding::build_header(State& state) {
@@ -440,18 +426,18 @@ bool HuffmanCoding::encoding::build_header(State& state) {
          *  For any branch code member of 1ⁿ{0{0,1}*,_}, n is decremented from the depth,
          *  means unbranching (exiting a branch)
          */
+         
          byte i = depth - 1;
-
-         BitTools::flipbit(connections->branch, i);
+         bool bit = BitTools::flipbit(connections->branch, i);
 
          if (i) {
-            if (BitTools::getbit(connections->branch, i)) do {
-               i--;
-               depth--;
-            } while (BitTools::getbit(connections->branch, i) && i);
-
-            else do i--;
-            while (BitTools::flipbit(connections->branch, i) && i);
+            if (bit) {
+               do { i--; }
+               while (BitTools::flipbit(connections->branch, i) && i);
+            } else {
+               do { i--; depth--; }
+               while (BitTools::getbit(connections->branch, i) && i);
+            }
          }
 
          BitTools::print(connections->branch, connections->length);

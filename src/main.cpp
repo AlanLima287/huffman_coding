@@ -131,16 +131,15 @@ bool form_output_filename(const char* input_filename, char*& output_filename) {
 
    bool has_huf_extension = true;
    for (uint64_t i = 0; i < length; i++) {
-
-      if (input_filename[strlen - length + i] != extension[i]) {
-         has_huf_extension = false;
-         break;
-      }
+      if (input_filename[strlen - length + i] == extension[i]) continue;
+      
+      has_huf_extension = false;
+      break;
    }
 
    if (length < strlen && has_huf_extension) {
       
-      if (char* ptr = (char*)realloc(output_filename, (strlen - length) * sizeof(char))) 
+      if (char* ptr = (char*)realloc(output_filename, (strlen - length + 1) * sizeof(char))) 
          output_filename = ptr;
       else {
          if (output_filename)
@@ -159,7 +158,7 @@ bool form_output_filename(const char* input_filename, char*& output_filename) {
 
    } else {
 
-      if (char* ptr = (char*)realloc(output_filename, (strlen + length) * sizeof(char))) 
+      if (char* ptr = (char*)realloc(output_filename, (strlen + length + 1) * sizeof(char))) 
          output_filename = ptr;
       else {
          if (output_filename)
