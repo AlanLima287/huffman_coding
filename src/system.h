@@ -16,7 +16,7 @@ void get_terminal_dimensions(unsigned short& width, unsigned short& height) {
 }
 
 inline bool file_exists(const char* filename) {
-   return access(filename, F_OK);
+   return access(filename, F_OK) == 0;
 }
 
 inline bool system_specifics_setup() { return true; }

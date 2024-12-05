@@ -51,11 +51,11 @@ void print_character(byte ch) {
       else printf("x%02hhx", ch);                   // [E, 1B) ∪ (1B, 1F] ∪ [7F, FF]
    }
 
-   else if (ch == 0x20) printf("' '", ch); // {20}
+   else if (ch == 0x20) printf("' '"); // {20}
    else putchar(ch);                       // (20, 7F)
 }
 
-void print_file_opening_error(errno_t err) {
+void print_file_opening_error(int err) {
    switch (err) {
       case EACCES:       printf("Permission denied. You don't have the right permissions to access this file.\n"); break;
       case EEXIST:       printf("File already exists. Cannot create a new file with the same name.\n"); break;
