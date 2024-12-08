@@ -171,23 +171,21 @@ int main(int argc, char** argv) {
       }
    }
 
-   std::cout << input_filename << ' ' << output_filename;
-
    if (flags & ENCODE) {
 
-      // if (!HuffmanCoding::encode(input_filename, output_filename, flags & SHOW_TREE)) {
-      //    std::cout << "Algo deu errado ao codificar " << input_filename;
-      //    std::cout.put('\n');
-      //    goto error;
-      // }
+      if (!HuffmanCoding::encode(input_filename, output_filename, flags & SHOW_TREE)) {
+         std::cout << "Algo deu errado ao codificar " << input_filename;
+         std::cout.put('\n');
+         goto error;
+      }
 
    } else if (flags & DECODE) {
 
-      // if (!HuffmanCoding::decode(input_filename, output_filename, flags & SHOW_TREE)) {
-      //    std::cout << "Algo deu errado ao decodificar " << input_filename;
-      //    std::cout.put('\n');
-      //    goto error;
-      // }
+      if (!HuffmanCoding::decode(input_filename, output_filename, flags & SHOW_TREE)) {
+         std::cout << "Algo deu errado ao decodificar " << input_filename;
+         std::cout.put('\n');
+         goto error;
+      }
 
    }
 
