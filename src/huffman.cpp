@@ -356,7 +356,7 @@ bool HuffmanCoding::encoding::build_queue(State& state) {
 void HuffmanCoding::encoding::build_tree(State& state) {
 
    Node* index = state.base + state.unique_chars;
-   state.encoded_size += state.unique_chars * 8 + 8;
+   state.encoded_size = state.unique_chars * 8 + 8;
 
    // Yes, the loop will execute state.unique_chars - 1 times, this was intentional
    for (uint64_t i = 1; i < state.unique_chars; i++) {
