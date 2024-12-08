@@ -2,9 +2,6 @@
 #include "huffman.h"
 #include <iostream>
 
-bool form_output_filename(const char*, char*&);
-void cmd_help();
-
 int main(int argc, char** argv) {
 
    system_specifics_setup();
@@ -13,14 +10,15 @@ int main(int argc, char** argv) {
    get_terminal_dimensions(width, height);
 
    enum flag_t : byte {
-      HELP      = 0b00001,
-      ENCODE    = 0b00010,
-      DECODE    = 0b00100,
-      ALLOCATED = 0b01000,
-      // SHOW_TREE = 0b10000,
+      HELP = 0b0001,
+      ENCODE = 0b0010,
+      DECODE = 0b0100,
+      SHOW_TREE = 0b1000,
    };
 
    byte flags = 0;
+   bool allocated = false;
+
    const char* input_filename = nullptr;
    char* output_filename = nullptr;
 
@@ -42,7 +40,7 @@ int main(int argc, char** argv) {
             case 'h': flags |= HELP; break;
             case 'e': flags |= ENCODE; break;
             case 'd': flags |= DECODE; break;
-            // case 'i': flags |= INTERACTIVE; break;
+            case 's': flags |= SHOW_TREE; break;
          }
 
       } else {
@@ -54,145 +52,151 @@ int main(int argc, char** argv) {
          else if (!output_filename)
             output_filename = argv[i];
 
+         else {
+            print_in_column("Arquivos demais foram fornecidos!\n", 0, width);
+            goto error;
+         }
       }
    }
 
    if (flags & HELP) {
       esc::reset();
-      cmd_help();
+
+      word width, height;
+      get_terminal_dimensions(width, height);
+
+      print_in_column("clue -h\n", 0, width);
+      print_in_column("Mostra essa tela\n", 3, width);
+
+      print_in_column("clue <arquivo>\n", 0, width);
+      print_in_column("Se <arquivo> = <nome>.huf, decodifica-se <arquivo> e põe os resultado em <nome>,\n", 3, width);
+      print_in_column("caso contrário, codifica-se <arquivo> e põe o resultado em <arquivo>.huf.\n", 3, width);
+
+      print_in_column("clue -d <arquivo de entrada> <arquivo de saída>\n", 0, width);
+      print_in_column("Decodifica <arquivo de entrada> e põe o resultado em <arquivo de saída>.\n", 3, width);
+
+      print_in_column("clue -e <arquivo de entrada> <arquivo de saída>\n", 0, width);
+      print_in_column("Codifica <arquivo de entrada> e põe o resultado em <arquivo de saída>.\n", 3, width);
+
+      print_in_column("clue -s ...\n", 0, width);
+      print_in_column("Adicinando -s a uma chamada mostrará a árvore de Huffman gerada.\n", 3, width);
       return 0;
    }
 
-   // A input file must always be given
-   if (!input_filename) {
-      print_in_column("Um arquivo de saída precisa ser informado!\n", 0, width);
-      goto error;
-   }
+   /* Improper input handling */ {
 
-   // !(~a & M) <=> a & M == M
-   // Check whether both flags are active
-   if (!(~flags & (ENCODE | DECODE))) {
-      print_in_column("Parametros ambíguos!\n", 0, width);
-      goto error;
-   }
-
-   // A output must be given when there are flags
-   if (!output_filename && (flags & (ENCODE | DECODE))) {
-      print_in_column("Um arquivo de saída precisa ser informado!\n", 0, width);
-      goto error;
-   }
-
-   esc::reset();
-
-   if (!flags) {
-      output_filename = nullptr;
-      bool is_encoded = form_output_filename(input_filename, output_filename);
-         
-      if (!output_filename) {
-         std::cout.write(BAD_ALLOCATION, sizeof(BAD_ALLOCATION) - 1);
-         return 1;
-      }
-
-      flags |= ALLOCATED | (is_encoded ? DECODE : ENCODE);
-   }
-
-   if (false);
-   
-   else if (flags & ENCODE) {
-      if (!HuffmanCoding::encode(input_filename, output_filename)) {
-         std::cout << "Algo deu errado ao codificar " << input_filename;
+      // A input file must always be given
+      if (!input_filename) {
+         print_in_column("Um arquivo de entrada precisa ser informado!\n", 0, width);
          goto error;
       }
-   }
-   
-   else if (flags & DECODE) {
-      if (!HuffmanCoding::decode(input_filename, output_filename)) {
-         std::cout << "Algo deu errado ao decodificar " << input_filename;
+
+      // !(~a & M) <=> a & M == M
+      // Check whether both flags are active
+      if (!(~flags & (ENCODE | DECODE))) {
+         print_in_column("Parametros ambíguos!\n", 0, width);
          goto error;
+      }
+
+      // A output must be given when there are flags
+      if (!output_filename && (flags & (ENCODE | DECODE))) {
+         print_in_column("Um arquivo de saída precisa ser informado!\n", 0, width);
+         goto error;
+      }
+
+      esc::reset();
+   }
+
+   // Either has not DECODE nor ENCODE flag or has ENCODE flag
+   if (!(flags & DECODE) || (flags & ENCODE)) {
+
+      const char extension[] = ".huf";
+      uint64_t ext_length = sizeof(extension) - 1;
+
+      if (flags & ENCODE) { // make sure the output has a .huf extension
+
+         uint64_t length = strlen(output_filename);
+         bool has_huf_extension = !strcmp(extension, output_filename + length - ext_length);
+
+         if (!has_huf_extension) {
+
+            char* new_output_filename = new (std::nothrow) char[length + ext_length + 1];
+            if (!new_output_filename) {
+               std::cout.write(BAD_ALLOCATION, sizeof(BAD_ALLOCATION) - 1);
+               return 1;
+            }
+
+            strncpy(new_output_filename, output_filename, length);
+            strncpy(new_output_filename + length, extension, ext_length);
+            new_output_filename[length + ext_length] = '\0';
+
+            output_filename = new_output_filename;
+            allocated = true;
+         }
+
+      } else { // it has to form a name for the output file
+
+         uint64_t length = strlen(input_filename);
+         bool has_huf_extension = !strcmp(extension, input_filename + length - ext_length);
+
+         if (ext_length < length && has_huf_extension) {
+
+            output_filename = new (std::nothrow) char[length - ext_length + 1];
+            if (!output_filename) {
+               std::cout.write(BAD_ALLOCATION, sizeof(BAD_ALLOCATION) - 1);
+               return 1;
+            }
+
+            strncpy(output_filename, input_filename, length - ext_length);
+            output_filename[length - ext_length] = '\0';
+
+            flags |= DECODE;
+
+         } else {
+
+            output_filename = new (std::nothrow) char[length + ext_length + 1];
+            if (!output_filename) {
+               std::cout.write(BAD_ALLOCATION, sizeof(BAD_ALLOCATION) - 1);
+               return 1;
+            }
+
+            strncpy(output_filename, input_filename, length);
+            strncpy(output_filename + length, extension, ext_length);
+            output_filename[length + ext_length] = '\0';
+
+            flags |= ENCODE;
+         }
+
+         allocated = true;
       }
    }
 
-   if (flags & ALLOCATED)
-      free(output_filename);
+   std::cout << input_filename << ' ' << output_filename;
+
+   if (flags & ENCODE) {
+
+      // if (!HuffmanCoding::encode(input_filename, output_filename, flags & SHOW_TREE)) {
+      //    std::cout << "Algo deu errado ao codificar " << input_filename;
+      //    std::cout.put('\n');
+      //    goto error;
+      // }
+
+   } else if (flags & DECODE) {
+
+      // if (!HuffmanCoding::decode(input_filename, output_filename, flags & SHOW_TREE)) {
+      //    std::cout << "Algo deu errado ao decodificar " << input_filename;
+      //    std::cout.put('\n');
+      //    goto error;
+      // }
+
+   }
+
+   if (allocated)
+      delete[] output_filename;
 
    return 0;
 
 error:
    esc::reset();
    return 1;
-}
-
-bool form_output_filename(const char* input_filename, char*& output_filename) {
-   const char extension[] = ".huf";
-   uint64_t length = sizeof(extension) - 1;
-
-   uint64_t strlen;
-   for (strlen = 0; input_filename[strlen]; strlen++);
-
-   bool has_huf_extension = true;
-   for (uint64_t i = 0; i < length; i++) {
-      if (input_filename[strlen - length + i] == extension[i]) continue;
-      
-      has_huf_extension = false;
-      break;
-   }
-
-   if (length < strlen && has_huf_extension) {
-      
-      if (char* ptr = (char*)realloc(output_filename, (strlen - length + 1) * sizeof(char))) 
-         output_filename = ptr;
-      else {
-         if (output_filename)
-            free(output_filename);
-         output_filename = ptr;
-         return true; // Bad Allocation
-      }
-
-      uint64_t i;
-      for (i = 0; i < strlen - length; i++)
-         output_filename[i] = input_filename[i];
-      
-      output_filename[strlen - length] = '\0';
-      
-      return true; // For decoding
-
-   } else {
-
-      if (char* ptr = (char*)realloc(output_filename, (strlen + length + 1) * sizeof(char))) 
-         output_filename = ptr;
-      else {
-         if (output_filename)
-            free(output_filename);
-         output_filename = ptr;
-         return false; // Bad Allocation
-      }
-      
-      for (uint64_t i = 0; i < strlen; i++)
-         output_filename[i] = input_filename[i];
-
-      for (uint64_t i = 0; i < length; i++)
-         output_filename[strlen + i] = extension[i];
-
-      output_filename[strlen + length] = '\0';
-
-      return false; // For encoding
-   }
-}
-
-void cmd_help() {
-   word width, height;
-   get_terminal_dimensions(width, height);
-
-   print_in_column("clue -h\n", 0, width);
-   print_in_column("Mostra essa tela\n", 3, width);
-
-   print_in_column("clue <arquivo>\n", 0, width);
-   print_in_column("Se <arquivo> = <nome>.huf, decodifica-se <arquivo> e põe os resultado em <nome>\n", 3, width);
-   print_in_column("Caso contrário, codifica o arquivo e põe o resultado em <arquivo>.huf\n", 3, width);
-
-   print_in_column("clue -d <arquivo de entrada> <arquivo de saída>\n", 0, width);
-   print_in_column("Decodifica <arquivo de entrada> e põe o resultado em <arquivo de saída>\n", 3, width);
-
-   print_in_column("clue -e <arquivo de entrada> <arquivo de saída>\n", 0, width);
-   print_in_column("Codifica <arquivo de entrada> e põe o resultado em <arquivo de saída>\n", 3, width);
 }

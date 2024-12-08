@@ -38,6 +38,11 @@ void BitTools::print(byte* base, uint64_t size) {
    }
 }
 
+void BitTools::printin(byte* base, uint64_t size) {
+   for (uint64_t i = 0; i < size; i++)
+      std::cout.put(getbit(base, i) ? '1' : '0');
+}
+
 void BitTools::print(byte* base, uint64_t size, uint64_t pad) {
    if (!size) return;
    size--;
@@ -55,7 +60,7 @@ void BitTools::printin(byte* base, uint64_t size, uint64_t pad) {
    }
 }
 
-#if defined(__INTRIN_H_) && __HAS__INTRINSICS____
+#if 0 && defined(__INTRIN_H_) && __HAS__INTRINSICS____
 
 inline bool BitTools::getbit(byte* base, uint64_t pos) { return _bittest64((const long long*)(base + (pos >> SHIFT)), pos & MASK); }
 inline bool BitTools::flipbit(byte* base, uint64_t pos) { return _bittestandcomplement64((long long*)(base + (pos >> SHIFT)), pos & MASK); }

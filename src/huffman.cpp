@@ -37,12 +37,15 @@ error:
       case exit_t::bad_allocation:
          std::cout.write(BAD_ALLOCATION, sizeof(BAD_ALLOCATION) - 1);
          break;
+
+      default:
+         break;
    }
 
    return false;
 }
 
-bool HuffmanCoding::encode(const char* input_filename, const char* output_filename) {
+bool HuffmanCoding::encode(const char* input_filename, const char* output_filename, bool show_tree) {
 
    using HUFFile::exit_t;
 
@@ -55,8 +58,10 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
 
    state.flags.literal = 0;
 
-   // Only useful for the 1 case of the switch below
+   // last_ch is only useful for the 1 case of the switch below
+   std::cout.write("Lendo o arquivo...\r", 19);
    last_ch = encoding::find_frequencies(state);
+   esc::clear_line();
 
    switch (state.unique_chars) {
 
@@ -67,6 +72,11 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
       // be encoded under the Huffman coding
       case 1: {
          state.flags.header.true_tree = 0;
+
+         if (show_tree) {
+            print_character(last_ch);
+            std::cout.put('\n');
+         }
 
          HUFFile::putbits(state.ofile, &state.flags.literal, 8);
          HUFFile::putbits(state.ofile, &last_ch, 8);
@@ -85,6 +95,11 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
          if (!encoding::build_queue(state)) goto bad_allocation;
          encoding::build_tree(state);
 
+         /* for the user interface */ {
+            if (show_tree)
+               application::print_tree(state.head);
+         }
+
          if (!encoding::build_header(state)) goto bad_allocation;
 
          // The tree is no longer needed nor valid
@@ -92,12 +107,45 @@ bool HuffmanCoding::encode(const char* input_filename, const char* output_filena
 
          HUFFile::rewind(state.ifile);
 
+         // Stuff for the loading bar
+         uint16_t width, progress;
+         uint64_t chunck;
+
+         /* for the user interface */ {
+            get_terminal_dimensions(width, progress);
+            chunck = state.size / width;
+
+            std::cout.put('[');
+            esc::move_to(width);
+            std::cout.put(']');
+
+            esc::move_to(1);
+         }
+
          byte ch;
-         while (HUFFile::getchar(state.ifile, ch)) {
+         for (uint64_t i = 0, j = 0; HUFFile::getchar(state.ifile, ch); i++) {
             HUFFile::putbits(state.ofile,
                state.character_buffer[ch].code->branch,
                state.character_buffer[ch].code->length);
+
+            if (i >= chunck) { // for the user interface
+               j += i;
+               i = 0;
+
+               uint16_t new_progress = j * width / state.size;
+               for (; progress < new_progress; progress++)
+                  std::cout.put('#');
+            }
          }
+
+         esc::clear_line();
+         std::cout.put('\r');
+
+         state.encoded_size /= 8; // bits to bytes
+
+         std::cout << "Tamanho original: " << state.size << " bytes\n";
+         std::cout << "Tamanho após compressão: " << state.encoded_size << " bytes\n";
+         std::cout << "Taxa de compressão: " << (1.0 - (double)state.encoded_size / state.size) * 100.0 << "%\n";
 
          HUFFile::flushbits(state.ofile);
 
@@ -122,7 +170,7 @@ bad_allocation:
    return false;
 }
 
-bool HuffmanCoding::decode(const char* input_filename, const char* output_filename) {
+bool HuffmanCoding::decode(const char* input_filename, const char* output_filename, bool show_tree) {
 
    using HUFFile::exit_t;
 
@@ -146,34 +194,53 @@ bool HuffmanCoding::decode(const char* input_filename, const char* output_filena
          // Get that one character
          if (!HUFFile::getbyte(state.ifile, character)) break;
 
+         if (show_tree) {
+            print_character(character);
+            std::cout.put('\n');
+         }
+
          // Get the number of repetitions
          for (uint8_t i = 0; HUFFile::getbyte(state.ifile, ch); i += 8) {
             count |= ch << i;
          }
 
          // Put the character the appropriate number of times
-         for (uint64_t i = 0; i < count; i++) {
+         for (uint64_t i = 0; i < count; i++)
             HUFFile::putchar(state.ofile, character);
-         }
 
          HUFFile::flush(state.ofile);
       } break;
 
       // The file was encoded under the Huffman coding
       case 1: {
-         
+
          // The -1 reffers to the flag byte already computed
          state.size = (HUFFile::file_size(state.ifile) - 1) << 3;
-         if (state.flags.header.last_byte) 
+         if (state.flags.header.last_byte)
             state.size -= 8 - state.flags.header.last_byte;
-         
+
          if (!decoding::build_tree_branch(state, &state.head))
             goto bad_allocation;
-         // print_inline_tree(state.head);
 
-         uint64_t i = 0;
+         if (show_tree)
+            application::print_tree(state.head);
 
-         do {
+         // Stuff for the loading bar
+         uint16_t width, progress;
+         uint64_t chunck;
+
+         /* for the user interface */ {
+            get_terminal_dimensions(width, progress);
+            chunck = state.size / width;
+
+            std::cout.put('[');
+            esc::move_to(width);
+            std::cout.put(']');
+
+            esc::move_to(1);
+         }
+
+         for (uint64_t i = 0, j = 0; i < state.size;) {
             Node* node = state.head;
             byte bit;
 
@@ -185,9 +252,20 @@ bool HuffmanCoding::decode(const char* input_filename, const char* output_filena
 
             HUFFile::putchar(state.ofile, node->character);
 
-         } while (i < state.size);
-         
+            j += i;
+            if (j >= chunck) { // for the user interface
+               j %= chunck;
+
+               uint16_t new_progress = i * width / state.size;
+               for (; progress < new_progress; progress++)
+                  std::cout.put('#');
+            }
+         }
+
       finish:
+         esc::clear_line();
+         std::cout.put('\r');
+
          HUFFile::flush(state.ofile);
          decoding::destroy_tree(state.head);
 
@@ -278,6 +356,7 @@ bool HuffmanCoding::encoding::build_queue(State& state) {
 void HuffmanCoding::encoding::build_tree(State& state) {
 
    Node* index = state.base + state.unique_chars;
+   state.encoded_size += state.unique_chars * 8 + 8;
 
    // Yes, the loop will execute state.unique_chars - 1 times, this was intentional
    for (uint64_t i = 1; i < state.unique_chars; i++) {
@@ -313,11 +392,10 @@ void HuffmanCoding::encoding::build_tree(State& state) {
       */
       if (!index->child[1]->height) {
          index->character = two_leaves;
+         state.encoded_size += 1;
       } else {
-         if (!index->child[0]->height)
-            index->character = one_leaf;
-         else
-            index->character = no_leaves;
+         index->character = index->child[0]->height ? no_leaves : one_leaf;
+         state.encoded_size += 2;
       }
 
       Node** node = &next_node->next_node;
@@ -348,7 +426,6 @@ bool HuffmanCoding::encoding::build_header(State& state) {
    // We must know the entropy first
    state.ofile.cursor = 8;
 
-   uint64_t entropy = 0;
    uint8_t length = BitTools::size(state.head->height);
    uint8_t depth = 0; // Stores the relative depth of the tree
 
@@ -367,15 +444,12 @@ bool HuffmanCoding::encoding::build_header(State& state) {
    for (int16_t i = length - 1; i >= 0; i--)
       branches[i] = 0xFF;
 
-   print_inline_tree(state.head);
-   std::cout.put('\n');
-
    // The head will now be used as a stack top
    while (true) {
 
       if (state.head->height) {
 
-         byte branch_style, length;
+         byte branch_style = 0, length = 0;
          switch (state.head->character) {
             case no_leaves:  branch_style = 0b11; length = 2; break;
             case one_leaf:   branch_style = 0b01; length = 2; break;
@@ -401,7 +475,7 @@ bool HuffmanCoding::encoding::build_header(State& state) {
          byte ch = state.head->character;
          HUFFile::putbits(state.ofile, &ch, 8);
 
-         entropy += depth * state.head->frequency; // ∑L(x)f(x)
+         state.encoded_size += depth * state.head->frequency; // ∑L(x)f(x)
 
          state.character_buffer[ch].code = connections;
          connections->branch = branches;
@@ -426,24 +500,17 @@ bool HuffmanCoding::encoding::build_header(State& state) {
          *  For any branch code member of 1ⁿ{0{0,1}*,_}, n is decremented from the depth,
          *  means unbranching (exiting a branch)
          */
-         
+
          byte i = depth - 1;
          bool bit = BitTools::flipbit(connections->branch, i);
 
          if (i) {
             if (bit) {
-               do { i--; }
-               while (BitTools::flipbit(connections->branch, i) && i);
+               do { i--; } while (BitTools::flipbit(connections->branch, i) && i);
             } else {
-               do { i--; depth--; }
-               while (BitTools::getbit(connections->branch, i) && i);
+               do { i--; depth--; } while (BitTools::getbit(connections->branch, i) && i);
             }
          }
-
-         BitTools::print(connections->branch, connections->length);
-         std::cout.write(": ", 2);
-         print_character(ch);
-         std::cout.put('\n');
 
          if (state.head->next_node == nullptr) break;
 
@@ -460,13 +527,8 @@ bool HuffmanCoding::encoding::build_header(State& state) {
       state.head = state.head->next_node;
    }
 
-   std::cout << "Entropy: " << (float)entropy / state.size << '\n';
-   std::cout << "Total character count: " << state.size << '\n';
-
-   // This will give back the position of the last true bit in the last byte of the encoded stream,
-   // state.ofile.cursor, as of now, stores the size of the header (flags byte plus the encoded tree)
-   // modded by a multiple of 8 and entropy is the amount of bits in the whole encoded stream
-   state.flags.header.last_byte = (entropy + state.ofile.cursor) & 0b111;
+   // This will give back the position of the last true bit in the last byte of the encoded stream
+   state.flags.header.last_byte = state.encoded_size & 0b111;
 
    return true;
 }
@@ -475,12 +537,12 @@ bool HuffmanCoding::decoding::build_tree_branch(State& state, Node** node) {
    *node = new (std::nothrow) Node{ 0, nullptr, nullptr, nullptr, 0, 1 };
    if (!*node) return false;
 
-   byte bit;
-   HUFFile::getbit(state.ifile, bit);
+   byte bit = 0;
+   if (!HUFFile::getbit(state.ifile, bit)) return false;
    state.size--;
 
    if (!bit) {
-      
+
       if (!build_tree_leaf(state, &(*node)->child[0])) return false;
       if (!build_tree_leaf(state, &(*node)->child[1])) return false;
 
@@ -511,21 +573,21 @@ bool HuffmanCoding::decoding::build_tree_leaf(State& state, Node** node) {
 }
 
 void HuffmanCoding::decoding::destroy_tree(Node* root) {
-   
+
    while (root) {
-      
+
       if (root->child[0]) {
          root->next_node = root;
          root = root->child[0];
       }
-      
+
       if (root->child[1]) {
          root->next_node = root;
          root = root->child[1];
       }
 
       Node* tmp = root->next_node;
-      
+
       delete root;
       root = tmp;
    }

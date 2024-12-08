@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <math.h>
 
 #include <iostream>
 
@@ -48,11 +49,11 @@ void print_character(byte ch) {
       if (ch < 0x07) putchar('0' | ch);                   // [0, 7)
       else if (ch <= 0x0D) putchar("abtnvfr"[ch - 0x07]); // [7, D]
       else if (ch == 0x1B) putchar('e');                  // {1B}
-      else printf("x%02hhx", ch);                   // [E, 1B) ∪ (1B, 1F] ∪ [7F, FF]
+      else printf("x%02hhx", ch);                         // [E, 1B) ∪ (1B, 1F] ∪ [7F, FF]
    }
 
-   else if (ch == 0x20) printf("' '"); // {20}
-   else putchar(ch);                       // (20, 7F)
+   else if (ch == 0x20) printf("' '");                    // {20}
+   else putchar(ch);                                      // (20, 7F)
 }
 
 void print_file_opening_error(int err) {
