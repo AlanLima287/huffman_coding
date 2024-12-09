@@ -505,11 +505,8 @@ bool HuffmanCoding::encoding::build_header(State& state) {
          bool bit = BitTools::flipbit(connections->branch, i);
 
          if (i) {
-            if (bit) {
-               do { i--; } while (BitTools::flipbit(connections->branch, i) && i);
-            } else {
-               do { i--; depth--; } while (BitTools::getbit(connections->branch, i) && i);
-            }
+            if (bit) do { i--; } while (BitTools::flipbit(connections->branch, i) && i);
+            else do { i--; depth--; } while (BitTools::getbit(connections->branch, i) && i);
          }
 
          if (state.head->next_node == nullptr) break;

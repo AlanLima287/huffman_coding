@@ -1,2 +1,2 @@
 @echo off
-g++ .\build\build.cpp -O2 -Wall -o clue
+g++ .\build\build.cpp -O2 -o clue
